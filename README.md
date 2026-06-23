@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="docs/vgi-logo.png" alt="Vector Gateway Interface (VGI)" width="320">
+</p>
+
+<p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
+
 # vgi-scholar
 
 A [VGI](https://github.com/query-farm/vgi-python) worker that searches
@@ -188,3 +194,12 @@ scripts/run_sql_e2e.py   starts the mock server, exports its URL, runs the hayba
     pool.
   Set `VGI_SCHOLAR_MAILTO` and stay within each API's documented rate limits.
   You are responsible for complying with each provider's terms.
+
+---
+
+## Authorship & License
+
+Written by [Query.Farm](https://query.farm) — every VGI worker is designed and built by Query.Farm.
+
+Copyright 2026 Query Farm LLC - https://query.farm
+
