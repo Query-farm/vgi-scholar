@@ -4,7 +4,9 @@
 
 <p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
 
-# vgi-scholar
+# Scholarly Search across OpenAlex, arXiv & Crossref in DuckDB
+
+> **vgi-scholar** · a [Query.Farm](https://query.farm) VGI worker
 
 A [VGI](https://github.com/query-farm/vgi-python) worker that searches
 **scholarly literature** from DuckDB/SQL across multiple **free, ToS-clean**
