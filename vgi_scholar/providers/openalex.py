@@ -26,9 +26,11 @@ class OpenAlexProvider:
     name = "openalex"
 
     def __init__(self, base_url: str = DEFAULT_BASE_URL) -> None:
+        """Bind the provider to ``base_url`` (overridable for tests)."""
         self.base_url = base_url.rstrip("/")
 
     def search(self, query: str, count: int, cursor: str | None, opts: dict[str, Any]) -> Page:
+        """Fetch one page of OpenAlex works for ``query``."""
         params: dict[str, Any] = {
             "search": query,
             "per_page": max(1, min(count, 200)),
@@ -52,9 +54,7 @@ class OpenAlexProvider:
     @staticmethod
     def _map(work: dict[str, Any]) -> Result:
         authors = [
-            a["author"]["display_name"]
-            for a in work.get("authorships", [])
-            if a.get("author", {}).get("display_name")
+            a["author"]["display_name"] for a in work.get("authorships", []) if a.get("author", {}).get("display_name")
         ] or None
 
         primary = work.get("primary_location") or {}

@@ -31,9 +31,11 @@ class ArxivProvider:
     name = "arxiv"
 
     def __init__(self, base_url: str = DEFAULT_BASE_URL) -> None:
+        """Bind the provider to ``base_url`` (overridable for tests)."""
         self.base_url = base_url.rstrip("/")
 
     def search(self, query: str, count: int, cursor: str | None, opts: dict[str, Any]) -> Page:
+        """Fetch one page of arXiv entries for ``query``."""
         start = _parse_offset(cursor)
         per_page = max(1, min(count, 200))
         params = {
@@ -59,9 +61,7 @@ class ArxivProvider:
         title = _text(entry.find(f"{_ATOM}title"))
         summary = _text(entry.find(f"{_ATOM}summary"))
         authors = [
-            name
-            for author in entry.findall(f"{_ATOM}author")
-            if (name := _text(author.find(f"{_ATOM}name")))
+            name for author in entry.findall(f"{_ATOM}author") if (name := _text(author.find(f"{_ATOM}name")))
         ] or None
 
         published = parse_date(_text(entry.find(f"{_ATOM}published")))

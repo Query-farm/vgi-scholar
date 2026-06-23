@@ -28,9 +28,11 @@ class CrossrefProvider:
     name = "crossref"
 
     def __init__(self, base_url: str = DEFAULT_BASE_URL) -> None:
+        """Bind the provider to ``base_url`` (overridable for tests)."""
         self.base_url = base_url.rstrip("/")
 
     def search(self, query: str, count: int, cursor: str | None, opts: dict[str, Any]) -> Page:
+        """Fetch one page of Crossref works for ``query``."""
         params: dict[str, Any] = {
             "query": query,
             "rows": max(1, min(count, 100)),
@@ -56,8 +58,7 @@ class CrossrefProvider:
         title = titles[0] if titles else None
 
         author_names = [
-            " ".join(part for part in (a.get("given"), a.get("family")) if part).strip()
-            for a in item.get("author", [])
+            " ".join(part for part in (a.get("given"), a.get("family")) if part).strip() for a in item.get("author", [])
         ]
         authors = [a for a in author_names if a] or None
 

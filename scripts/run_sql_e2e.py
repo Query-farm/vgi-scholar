@@ -28,6 +28,7 @@ PROVIDERS = ["openalex", "arxiv", "crossref"]
 
 
 def main() -> int:
+    """Run the SQL E2E suite against the worker with providers mocked locally."""
     worker = os.environ.get("VGI_SCHOLAR_WORKER")
     if not worker:
         print("ERROR: VGI_SCHOLAR_WORKER is not set", file=sys.stderr)

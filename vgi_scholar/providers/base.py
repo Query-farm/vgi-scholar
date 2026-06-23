@@ -54,6 +54,9 @@ class Provider(Protocol):
                 start at the beginning.
             opts: Provider-agnostic options (e.g. ``mailto``); providers ignore
                 keys they do not understand.
+
+        Returns:
+            One page of results plus the cursor for the next page.
         """
         ...
 

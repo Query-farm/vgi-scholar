@@ -98,6 +98,8 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
     FIXED_SCHEMA: ClassVar[pa.Schema] = UNIFIED_SCHEMA
 
     class Meta:
+        """Function metadata."""
+
         name = "scholar_search"
         description = "Search academic literature (OpenAlex / arXiv / Crossref) into a unified schema"
         categories = ["search", "scholarly", "research", "rag"]
@@ -114,6 +116,7 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
 
     @classmethod
     def on_bind(cls, params: BindParams[ScholarSearchArgs]) -> BindResponse:
+        """Validate the provider and pin the output schema at bind time."""
         # Validate the provider name at bind time so a typo is a clean DuckDB
         # error before any scan begins.
         get_provider(params.args.provider, base_url_override(params.args.provider))
@@ -121,14 +124,17 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
 
     @classmethod
     def cardinality(cls, params: BindParams[ScholarSearchArgs]) -> TableCardinality:
+        """Estimate the row count from the caller's ``count`` budget."""
         return TableCardinality(estimate=params.args.count, max=params.args.count)
 
     @classmethod
     def initial_state(cls, params: ProcessParams[ScholarSearchArgs]) -> _ScanState:
+        """Return the fresh pagination state for a new scan."""
         return _ScanState()
 
     @classmethod
     def process(cls, params: ProcessParams[ScholarSearchArgs], state: _ScanState, out: OutputCollector) -> None:
+        """Fetch and emit one provider page, advancing the pagination cursor."""
         a = params.args
 
         if state.done or state.emitted >= a.count:
@@ -204,6 +210,8 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PROVIDERS_SCHEMA
 
     class Meta:
+        """Function metadata."""
+
         name = "scholar_providers"
         description = "List the available scholarly-search providers"
         categories = ["search", "scholarly", "metadata"]
@@ -216,11 +224,13 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_NoArgs]) -> TableCardinality:
+        """Estimate the row count as the number of registered providers."""
         n = len(provider_names())
         return TableCardinality(estimate=n, max=n)
 
     @classmethod
     def process(cls, params: ProcessParams[_NoArgs], state: None, out: OutputCollector) -> None:
+        """Emit one row per registered provider, then finish."""
         names = provider_names()
         out.emit(
             pa.RecordBatch.from_pydict(
@@ -233,5 +243,6 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
             )
         )
         out.finish()
+
 
 TABLE_FUNCTIONS: list[type] = [ScholarSearchFunction, ScholarProvidersFunction]
