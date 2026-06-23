@@ -69,6 +69,13 @@ jobs:
       - name: Type check (mypy)
         run: uv run --no-sync mypy vgi_scholar scholar_worker.py serve.py
 
+      # pydoclint needs `docstring-parser-fork`, but `vgi-rpc` pulls in plain
+      # `docstring-parser`; both ship a top-level `docstring_parser` package, so
+      # whichever uv installs last wins. Reinstall the fork last so pydoclint's
+      # expected API (e.g. DocstringYields) is importable deterministically.
+      - name: Ensure docstring-parser-fork wins the namespace
+        run: uv pip install --reinstall-package docstring-parser-fork docstring-parser-fork
+
       - name: Docstring lint (pydoclint)
         run: uv run --no-sync pydoclint vgi_scholar scholar_worker.py serve.py
 
