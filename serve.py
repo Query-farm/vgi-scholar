@@ -1,12 +1,9 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http,oauth]",
+#     "vgi-python[http,oauth]>=0.8.3",
 #     "httpx>=0.27",
 # ]
-#
-# [tool.uv.sources]
-# vgi-python = { path = "../vgi-python" }
 # ///
 """HTTP entrypoint for the scholar worker.
 

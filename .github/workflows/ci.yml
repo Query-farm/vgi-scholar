@@ -1,3 +1,10 @@
+# Copyright 2026 Query Farm LLC - https://query.farm
+#
+# Unit tests (pytest), lint, and the sqllogictest extension suite
+# (test/sql/*.test) run against the vgi-scholar worker through the real signed
+# `vgi` DuckDB community extension via a prebuilt standalone `haybarn-unittest`.
+# The SQL E2E redirects every provider at a local in-process mock server — no
+# keys, no cost, no live egress. See ci/README.md for the design.
 name: CI
 
 on:
@@ -12,6 +19,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -23,75 +34,101 @@ jobs:
         python-version: ["3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8.2.0
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      # Install from PyPI rather than the local ../vgi-python path used for
-      # `uv run` during development, so CI is self-contained.
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install vgi-python "httpx>=0.27" pyarrow pytest
-          uv pip install -e . --no-deps
+        run: uv sync --frozen --all-extras
 
-      # Fixture parsers + mock-server E2E; NO live external API.
-      - name: Run unit tests
-        run: uv run --no-sync pytest
-
-  e2e:
-    name: SQL end-to-end (haybarn, mock server)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Set up Python 3.13
-        run: uv python install 3.13
-
-      # Self-contained: install the worker's runtime deps into a venv from PyPI
-      # (not the local ../vgi-python dev path), so the worker can be launched as
-      # `.venv/bin/python scholar_worker.py` (plain python ignores the PEP-723
-      # header that pins the dev path).
-      - name: Install worker dependencies
-        run: |
-          uv venv
-          uv pip install vgi-python "httpx>=0.27" pyarrow
-          uv pip install -e . --no-deps
-
-      - name: Install haybarn-unittest
-        run: |
-          uv tool install haybarn-unittest
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # The SQL suite is driven against a local mock provider server (started by
-      # scripts/run_sql_e2e.py) — no live external API.
-      - name: Run SQL end-to-end tests
-        run: make test-sql WORKER_STDIO=".venv/bin/python scholar_worker.py"
+      - name: Run tests
+        run: uv run --no-sync pytest -q
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8.2.0
 
-      - name: Install tooling
-        run: |
-          uv venv
-          uv pip install vgi-python "httpx>=0.27" pyarrow ruff mypy
-          uv pip install -e . --no-deps
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
 
       - name: Check linting
         run: uv run --no-sync ruff check .
 
       - name: Type check (mypy)
         run: uv run --no-sync mypy vgi_scholar
+
+  # Resolve the latest published haybarn release once, so the whole matrix tests
+  # the same version (and we never hardcode/pin it).
+  resolve-haybarn:
+    name: Resolve haybarn release
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.r.outputs.release }}
+    steps:
+      - id: r
+        run: |
+          REL=$(gh release view --repo Query-farm-haybarn/haybarn --json tagName --jq .tagName)
+          echo "release=$REL" >> "$GITHUB_OUTPUT"
+          echo "Latest haybarn release: $REL"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  integration:
+    name: End-to-end SQL on ${{ matrix.os }}
+    needs: resolve-haybarn
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, asset: haybarn_unittest-linux-amd64.zip }
+          - { os: macos-latest,  asset: haybarn_unittest-osx-arm64.zip }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install the worker (from the lockfile)
+        run: uv sync --frozen --python 3.13
+
+      - name: Download haybarn-unittest
+        run: |
+          gh release download "$HAYBARN_RELEASE" \
+            --repo Query-farm-haybarn/haybarn \
+            --pattern '${{ matrix.asset }}' \
+            --output haybarn-unittest.zip --clobber
+          mkdir -p hb && unzip -o -q haybarn-unittest.zip -d hb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAYBARN_RELEASE: ${{ needs.resolve-haybarn.outputs.release }}
+
+      - name: Resolve runner + worker paths
+        run: |
+          # Absolute paths: run-integration.sh cd's into a staging dir before
+          # invoking the runner, so relative paths would not resolve. The worker
+          # runs from the synced .venv (deps resolved from PyPI via the lockfile);
+          # plain `.venv/bin/python` ignores the PEP 723 header. run-integration.sh
+          # starts the mock provider server and redirects the providers at it.
+          UNITTEST="$PWD/$(find hb -name 'haybarn-unittest' -type f | head -1)"
+          chmod +x "$UNITTEST"
+          echo "HAYBARN_UNITTEST=$UNITTEST" >> "$GITHUB_ENV"
+          echo "VGI_SCHOLAR_WORKER=$PWD/.venv/bin/python $PWD/scholar_worker.py" >> "$GITHUB_ENV"
+
+      - name: Run extension integration suite
+        run: ci/run-integration.sh
