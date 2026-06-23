@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      # Install from PyPI rather than the local ../vgi-python path used for
+      # `uv run` during development, so CI is self-contained.
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install vgi-python "httpx>=0.27" pyarrow pytest
+          uv pip install -e . --no-deps
+
+      # Fixture parsers + mock-server E2E; NO live external API.
+      - name: Run unit tests
+        run: uv run --no-sync pytest
+
+  e2e:
+    name: SQL end-to-end (haybarn, mock server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      # Self-contained: install the worker's runtime deps into a venv from PyPI
+      # (not the local ../vgi-python dev path), so the worker can be launched as
+      # `.venv/bin/python scholar_worker.py` (plain python ignores the PEP-723
+      # header that pins the dev path).
+      - name: Install worker dependencies
+        run: |
+          uv venv
+          uv pip install vgi-python "httpx>=0.27" pyarrow
+          uv pip install -e . --no-deps
+
+      - name: Install haybarn-unittest
+        run: |
+          uv tool install haybarn-unittest
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # The SQL suite is driven against a local mock provider server (started by
+      # scripts/run_sql_e2e.py) — no live external API.
+      - name: Run SQL end-to-end tests
+        run: make test-sql WORKER_STDIO=".venv/bin/python scholar_worker.py"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install tooling
+        run: |
+          uv venv
+          uv pip install vgi-python "httpx>=0.27" pyarrow ruff mypy
+          uv pip install -e . --no-deps
+
+      - name: Check linting
+        run: uv run --no-sync ruff check .
+
+      - name: Type check (mypy)
+        run: uv run --no-sync mypy vgi_scholar

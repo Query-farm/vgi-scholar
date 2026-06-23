@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "count": 2,
+    "per_page": 2,
+    "next_cursor": "IlsxNjA5NDU5MjAwMDAwLCAnaHR0cHM6Ly9vcGVuYWxleC5vcmcvVzInXSI="
+  },
+  "results": [
+    {
+      "id": "https://openalex.org/W1",
+      "doi": "https://doi.org/10.1234/rag",
+      "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+      "display_name": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+      "publication_year": 2020,
+      "publication_date": "2020-05-22",
+      "type": "article",
+      "cited_by_count": 4200,
+      "open_access": {"oa_status": "green"},
+      "primary_location": {
+        "landing_page_url": "https://openalex.org/W1",
+        "source": {"display_name": "NeurIPS"}
+      },
+      "authorships": [
+        {"author": {"display_name": "Patrick Lewis"}},
+        {"author": {"display_name": "Ethan Perez"}}
+      ],
+      "abstract_inverted_index": {
+        "We": [0],
+        "introduce": [1],
+        "retrieval-augmented": [2],
+        "generation.": [3]
+      }
+    },
+    {
+      "id": "https://openalex.org/W2",
+      "doi": null,
+      "title": "Dense Passage Retrieval",
+      "display_name": "Dense Passage Retrieval",
+      "publication_year": 2020,
+      "publication_date": "2020",
+      "type": "article",
+      "cited_by_count": 2100,
+      "open_access": {"oa_status": "closed"},
+      "primary_location": {
+        "landing_page_url": null,
+        "source": null
+      },
+      "authorships": [],
+      "abstract_inverted_index": null
+    }
+  ]
+}

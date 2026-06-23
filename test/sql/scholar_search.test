@@ -1,0 +1,155 @@
+# name: test/sql/scholar_search.test
+# description: scholar_search E2E against the local mock provider server
+# group: [vgi_scholar]
+#
+# Driven by scripts/run_sql_e2e.py, which starts a canned-response HTTP server
+# and points every provider at it via VGI_SCHOLAR_<PROVIDER>_BASE_URL. No live
+# external API is touched. The mock serves a deterministic 5 results per query,
+# ONE per page, so a count larger than a page forces the cursor/offset scan
+# state to round-trip across page (batch) boundaries.
+
+require-env VGI_SCHOLAR_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'scholar' AS scholar (TYPE vgi, LOCATION '${VGI_SCHOLAR_WORKER}');
+
+# ============================================================================
+# Unified output schema: exactly the 11 unified columns, in order.
+# ============================================================================
+
+query I
+SELECT count(*) FROM (DESCRIBE
+  SELECT * FROM scholar.scholar_search('graphs', provider := 'openalex', count := 3));
+----
+11
+
+query T
+SELECT column_name FROM (DESCRIBE
+  SELECT * FROM scholar.scholar_search('graphs', provider := 'openalex', count := 3));
+----
+title
+authors
+abstract
+doi
+year
+published
+venue
+citations_count
+url
+source
+extra
+
+# authors is a LIST type (column_type begins with VARCHAR[]).
+query T
+SELECT column_type FROM (DESCRIBE
+  SELECT * FROM scholar.scholar_search('graphs', provider := 'openalex', count := 1))
+WHERE column_name = 'authors';
+----
+VARCHAR[]
+
+# published is TIMESTAMPTZ.
+query T
+SELECT column_type FROM (DESCRIBE
+  SELECT * FROM scholar.scholar_search('graphs', provider := 'openalex', count := 1))
+WHERE column_name = 'published';
+----
+TIMESTAMP WITH TIME ZONE
+
+# ============================================================================
+# authors comes back as an actual LIST<VARCHAR> with the expected elements.
+# ============================================================================
+
+query T
+SELECT authors
+FROM scholar.scholar_search('graphs', provider := 'openalex', count := 1);
+----
+[Ada Author0, Bob Builder0]
+
+query I
+SELECT len(authors)
+FROM scholar.scholar_search('graphs', provider := 'openalex', count := 1);
+----
+2
+
+# ============================================================================
+# Scan-state round-trip across a page boundary.
+#
+# The mock returns ONE result per page; count := 5, page_size := 1 forces FIVE
+# paged ticks. Getting all 5 distinct rows back (and the titles in 0..4 order)
+# proves the cursor/offset advanced and was preserved across batches. If the
+# scan state did not round-trip, we'd loop on page 0 or stop after one row.
+# ============================================================================
+
+query I
+SELECT count(*) FROM scholar.scholar_search('graphs', provider := 'openalex', count := 5, page_size := 1);
+----
+5
+
+# Distinct rows, no duplicates from re-fetching the same page.
+query I
+SELECT count(DISTINCT title) FROM scholar.scholar_search('graphs', provider := 'openalex', count := 5, page_size := 1);
+----
+5
+
+# Titles arrive in page order 0..4 — the cursor advanced one page at a time.
+query T
+SELECT title FROM scholar.scholar_search('graphs', provider := 'openalex', count := 5, page_size := 1)
+ORDER BY title;
+----
+Mock OpenAlex Work 0
+Mock OpenAlex Work 1
+Mock OpenAlex Work 2
+Mock OpenAlex Work 3
+Mock OpenAlex Work 4
+
+# count caps below what is available: only 2 rows even though 5 exist.
+query I
+SELECT count(*) FROM scholar.scholar_search('graphs', provider := 'openalex', count := 2, page_size := 1);
+----
+2
+
+# ============================================================================
+# Pagination works the same for arXiv (offset) and Crossref (cursor).
+# ============================================================================
+
+query I
+SELECT count(*) FROM scholar.scholar_search('graphs', provider := 'arxiv', count := 5, page_size := 1);
+----
+5
+
+query I
+SELECT count(*) FROM scholar.scholar_search('graphs', provider := 'crossref', count := 5, page_size := 1);
+----
+5
+
+# source column reflects the provider that produced the row.
+query T
+SELECT DISTINCT source FROM scholar.scholar_search('graphs', provider := 'crossref', count := 3);
+----
+crossref
+
+# ============================================================================
+# Discovery + clean error path.
+# ============================================================================
+
+query I
+SELECT count(*) >= 3 FROM scholar.scholar_providers();
+----
+true
+
+query T
+SELECT provider FROM scholar.scholar_providers() WHERE "default";
+----
+openalex
+
+# An unknown provider is a clean error (caught at bind), not a worker crash.
+statement error
+SELECT * FROM scholar.scholar_search('graphs', provider := 'no_such_provider');
+----
+unknown provider
+
+statement ok
+DETACH scholar;

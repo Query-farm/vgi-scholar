@@ -1,0 +1,37 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message": {
+    "total-results": 2,
+    "next-cursor": "AoJ3x+next+cursor+token",
+    "items": [
+      {
+        "DOI": "10.1234/rag",
+        "URL": "https://doi.org/10.1234/rag",
+        "title": ["Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"],
+        "container-title": ["Advances in Neural Information Processing Systems"],
+        "publisher": "Curran Associates",
+        "type": "proceedings-article",
+        "is-referenced-by-count": 4200,
+        "issued": {"date-parts": [[2020, 5, 22]]},
+        "author": [
+          {"given": "Patrick", "family": "Lewis"},
+          {"given": "Ethan", "family": "Perez"}
+        ],
+        "abstract": "<jats:p>We introduce <jats:italic>retrieval-augmented</jats:italic> generation.</jats:p>"
+      },
+      {
+        "DOI": "10.5555/dpr",
+        "URL": "https://doi.org/10.5555/dpr",
+        "title": ["Dense Passage Retrieval"],
+        "container-title": [],
+        "type": "journal-article",
+        "is-referenced-by-count": 2100,
+        "issued": {"date-parts": [[2020]]},
+        "author": [
+          {"family": "Karpukhin"}
+        ]
+      }
+    ]
+  }
+}

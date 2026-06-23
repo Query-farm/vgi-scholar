@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <title>ArXiv Query</title>
+  <opensearch:totalResults xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">2</opensearch:totalResults>
+  <entry>
+    <id>http://arxiv.org/abs/2005.11401v4</id>
+    <published>2020-05-22T17:55:00Z</published>
+    <updated>2021-04-12T00:00:00Z</updated>
+    <title>
+      Retrieval-Augmented Generation for
+      Knowledge-Intensive NLP Tasks
+    </title>
+    <summary>  We introduce a retrieval-augmented generation model that combines
+    parametric and non-parametric memory for language generation.
+    </summary>
+    <author><name>Patrick Lewis</name></author>
+    <author><name>Ethan Perez</name></author>
+    <arxiv:doi>10.5555/arxivrag</arxiv:doi>
+    <arxiv:journal_ref>NeurIPS 2020</arxiv:journal_ref>
+    <arxiv:primary_category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <link href="http://arxiv.org/abs/2005.11401v4" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2005.11401v4" rel="related" type="application/pdf"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2004.04906v3</id>
+    <published>2020-04-10T00:00:00Z</published>
+    <updated>2020-09-30T00:00:00Z</updated>
+    <title>Dense Passage Retrieval for Open-Domain Question Answering</title>
+    <summary>  Dense representations for passage retrieval.
+    </summary>
+    <author><name>Vladimir Karpukhin</name></author>
+    <link href="http://arxiv.org/abs/2004.04906v3" rel="alternate" type="text/html"/>
+  </entry>
+</feed>

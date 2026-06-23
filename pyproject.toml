@@ -1,0 +1,77 @@
+[project]
+name = "vgi-scholar"
+version = "0.1.0"
+description = "Search scholarly literature (OpenAlex / arXiv / Crossref) from SQL as VGI DuckDB table functions"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Query Farm LLC", email = "hello@query.farm" }]
+keywords = [
+    "vgi",
+    "duckdb",
+    "scholarly",
+    "openalex",
+    "arxiv",
+    "crossref",
+    "literature-search",
+    "research",
+    "rag",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+dependencies = [
+    "vgi-python",
+    "httpx>=0.27",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://query.farm"
+
+[tool.uv.sources]
+# Develop against the local vgi-python checkout (sibling directory). Drop or
+# override this block to resolve vgi-python from an index instead.
+vgi-python = { path = "../vgi-python" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vgi_scholar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# The PEP 723 inline-script headers wrap dependency pins that should stay one-per-line.
+"scholar_worker.py" = ["E501"]
+"serve.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
