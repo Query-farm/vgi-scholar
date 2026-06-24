@@ -63,24 +63,70 @@ _CATALOG_DESCRIPTION_MD = (
 )
 
 _SCHEMA_DESCRIPTION_LLM = (
-    "Scholarly-literature search functions returning a unified result schema. "
-    "`scholar_search` searches OpenAlex / arXiv / Crossref for works matching a query; "
-    "`scholar_providers` lists the providers available to `scholar_search`."
+    "## scholar.main\n\n"
+    "Scholarly-literature search functions returning a single **unified result schema**. "
+    "`scholar_search(query, provider := ..., count := ...)` searches OpenAlex / arXiv / Crossref "
+    "for works matching a free-text query and streams up to `count` rows (title, authors, abstract, "
+    "doi, year, published, venue, citations_count, url, source, extra). `scholar_providers()` lists "
+    "the providers available to `scholar_search`, one per row. Use this schema to find papers by "
+    "topic, resolve DOIs, gather citation counts, or build a corpus for retrieval-augmented "
+    "generation. No API key is required; set `VGI_SCHOLAR_MAILTO` for the polite pool."
 )
 
 _SCHEMA_DESCRIPTION_MD = (
-    "Scholarly-literature search over OpenAlex / arXiv / Crossref, normalized into a "
-    "single unified schema. Functions: `scholar_search`, `scholar_providers`."
+    "# scholar.main\n\n"
+    "Scholarly-literature search over **OpenAlex**, **arXiv**, and **Crossref**, normalized into a "
+    "single unified schema.\n\n"
+    "## Functions\n\n"
+    "- `scholar_search(query, provider := 'openalex', count := 10)` — search works and stream "
+    "unified-schema rows.\n"
+    "- `scholar_providers()` — list the providers `scholar_search` can target.\n\n"
+    "## Notes\n\n"
+    "No API key is required for any provider. Set `VGI_SCHOLAR_MAILTO` to join the OpenAlex / "
+    "Crossref polite pool. `scholar_search` requires outbound network access; `scholar_providers` "
+    "is pure metadata and always runs offline."
 )
 
 _CATALOG_TAGS = {
-    "vgi.description_llm": _CATALOG_DESCRIPTION_LLM,
-    "vgi.description_md": _CATALOG_DESCRIPTION_MD,
+    "vgi.title": "Scholarly Literature Search",
+    "vgi.keywords": (
+        "scholarly search, academic literature, papers, publications, openalex, arxiv, crossref, "
+        "doi, citations, preprints, literature review, rag, retrieval, research"
+    ),
+    "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
+    "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
     "vgi.author": "Query.Farm",
     "vgi.copyright": "Copyright 2026 Query Farm LLC - https://query.farm",
     "vgi.license": "MIT",
     "vgi.support_contact": "https://github.com/Query-farm/vgi-scholar/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-scholar/blob/main/README.md",
+}
+
+_SCHEMA_SOURCE_URL = "https://github.com/Query-farm/vgi-scholar/blob/main/scholar_worker.py"
+
+_SCHEMA_EXAMPLE_QUERIES = (
+    "SELECT * FROM scholar.main.scholar_providers();\n"
+    'SELECT provider FROM scholar.main.scholar_providers() WHERE "default";\n'
+    "SELECT title, authors, year FROM "
+    "scholar.main.scholar_search('retrieval augmented generation', count := 5);\n"
+    "SELECT title, doi FROM "
+    "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10);"
+)
+
+_SCHEMA_TAGS = {
+    "vgi.title": "Scholar — main",
+    "vgi.keywords": (
+        "scholar_search, scholar_providers, scholarly search, academic literature, openalex, "
+        "arxiv, crossref, doi, citations, literature review, rag"
+    ),
+    # VGI123 classifying tags use BARE keys (NOT vgi.-namespaced).
+    "domain": "research",
+    "category": "search",
+    "topic": "scholarly-literature",
+    "vgi.source_url": _SCHEMA_SOURCE_URL,
+    "vgi.doc_llm": _SCHEMA_DESCRIPTION_LLM,
+    "vgi.doc_md": _SCHEMA_DESCRIPTION_MD,
+    "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
 }
 
 _SCHOLAR_CATALOG = Catalog(
@@ -93,10 +139,7 @@ _SCHOLAR_CATALOG = Catalog(
         Schema(
             name="main",
             comment="Scholarly-search table functions: scholar_search (query works) and scholar_providers (list providers)",
-            tags={
-                "vgi.description_llm": _SCHEMA_DESCRIPTION_LLM,
-                "vgi.description_md": _SCHEMA_DESCRIPTION_MD,
-            },
+            tags=_SCHEMA_TAGS,
             functions=list(TABLE_FUNCTIONS),
         ),
     ],

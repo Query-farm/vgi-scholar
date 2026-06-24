@@ -18,6 +18,7 @@ at a local mock HTTP server without touching SQL.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from typing import Annotated, ClassVar
@@ -128,7 +129,60 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
             ),
         ]
         tags = {
-            "vgi.columns_md": (
+            "vgi.title": "Scholarly Literature Search",
+            "vgi.keywords": (
+                "scholarly search, academic literature, papers, publications, openalex, arxiv, "
+                "crossref, doi, citations, preprints, literature review, rag, retrieval"
+            ),
+            "vgi.source_url": ("https://github.com/Query-farm/vgi-scholar/blob/main/vgi_scholar/tables.py"),
+            "vgi.doc_llm": (
+                "## scholar_search\n\n"
+                "Search scholarly / academic literature and stream up to `count` matching works as "
+                "rows in a single **unified schema**, regardless of which provider answered. Use this "
+                "whenever an agent needs to find papers by topic, resolve DOIs, gather citation counts, "
+                "assemble a literature review, or build a corpus for retrieval-augmented generation (RAG).\n\n"
+                "### Inputs\n"
+                "- `query` (positional, VARCHAR) — free-text search string, e.g. `'retrieval augmented generation'`.\n"
+                "- `provider :=` (VARCHAR, default `'openalex'`) — one of `'openalex'`, `'arxiv'`, `'crossref'`. "
+                "Call `scholar_providers()` to enumerate the valid values.\n"
+                "- `count :=` (INTEGER, default 10, 1–1000) — maximum rows to return; the function pages the "
+                "provider until this budget is met or results are exhausted.\n"
+                "- `page_size :=` (INTEGER, default 0, 0–200) — rows fetched per provider request; 0 picks an "
+                "automatic page size.\n\n"
+                "### Output\n"
+                "One row per work in the unified schema (`title`, `authors`, `abstract`, `doi`, `year`, "
+                "`published`, `venue`, `citations_count`, `url`, `source`, `extra`). `authors` is a "
+                "`LIST<VARCHAR>`, `published` is a UTC `TIMESTAMPTZ`, and `extra` is provider-specific JSON.\n\n"
+                "### Behavior & edge cases\n"
+                "- No API key is required for any provider; set `VGI_SCHOLAR_MAILTO` to join the OpenAlex / "
+                "Crossref polite pool.\n"
+                "- An unknown `provider` is rejected at bind time with a clean DuckDB error.\n"
+                "- Provider/network failures surface as a DuckDB error rather than crashing the worker.\n"
+                "- Fields a provider does not supply (e.g. missing `doi` or `abstract`) come back as NULL.\n"
+                "- Requires outbound network access to the provider's public API to return rows."
+            ),
+            "vgi.doc_md": (
+                "# scholar_search\n\n"
+                "Search scholarly literature across **OpenAlex** (default), **arXiv**, and **Crossref**, "
+                "returning matches in one normalized schema so SQL never has to branch on the provider.\n\n"
+                "## Usage\n\n"
+                "```sql\n"
+                "-- Top 5 OpenAlex hits for a topic\n"
+                "SELECT title, authors, year\n"
+                "FROM scholar.main.scholar_search('retrieval augmented generation', count := 5);\n\n"
+                "-- Most recent arXiv preprints\n"
+                "SELECT title, published\n"
+                "FROM scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20)\n"
+                "ORDER BY published DESC;\n"
+                "```\n\n"
+                "## Notes\n\n"
+                "- `provider` accepts `openalex`, `arxiv`, or `crossref`; `scholar_providers()` lists them.\n"
+                "- `count` (1–1000) caps the rows returned; the function pages the provider transparently.\n"
+                "- No API key is needed. Set `VGI_SCHOLAR_MAILTO` for the polite pool.\n"
+                "- Network access to the provider API is required; provider errors become DuckDB errors.\n\n"
+                "See [`result_columns`](#) below for the returned columns."
+            ),
+            "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
                 "| `title` | VARCHAR | Work title. |\n"
@@ -257,12 +311,68 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
             ),
         ]
         tags = {
-            "vgi.columns_md": (
+            "vgi.title": "List Scholarly Providers",
+            "vgi.keywords": (
+                "providers, list providers, scholarly providers, openalex, arxiv, crossref, "
+                "default provider, capability, discovery, requires key"
+            ),
+            "vgi.source_url": ("https://github.com/Query-farm/vgi-scholar/blob/main/vgi_scholar/tables.py"),
+            "vgi.doc_llm": (
+                "## scholar_providers\n\n"
+                "Enumerate the scholarly-search providers that `scholar_search` can target, one per row. "
+                "Use this to discover the valid values for `scholar_search`'s `provider :=` argument, to find "
+                "the default provider, or to confirm a provider is keyless before running a search.\n\n"
+                "### Inputs\n"
+                "Takes no arguments.\n\n"
+                "### Output\n"
+                "One row per registered provider with `provider` (the name to pass as `provider := '...'`), "
+                "`requires_key` (BOOLEAN — all current providers are keyless, so `false`), and `default` "
+                "(BOOLEAN — true for the provider used when `scholar_search` omits `provider`).\n\n"
+                "### Behavior & edge cases\n"
+                "- Pure metadata: it makes **no** network calls and works without any external API, so it is "
+                "always safe to run as a capability/discovery probe.\n"
+                "- The set of providers is fixed at worker build time; the row order is the registration order."
+            ),
+            "vgi.doc_md": (
+                "# scholar_providers\n\n"
+                "List every scholarly-search provider available to `scholar_search`, one row each.\n\n"
+                "## Usage\n\n"
+                "```sql\n"
+                "-- Every provider scholar_search can use\n"
+                "SELECT * FROM scholar.main.scholar_providers();\n\n"
+                "-- The default provider\n"
+                'SELECT provider FROM scholar.main.scholar_providers() WHERE "default";\n'
+                "```\n\n"
+                "## Notes\n\n"
+                "- Returns metadata only — no network access is needed, so this is a reliable health/"
+                "capability check for the worker.\n"
+                "- All current providers are keyless (`requires_key = false`).\n"
+                "- Exactly one row has `default = true`."
+            ),
+            "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
                 "| `provider` | VARCHAR | Provider name to pass as `provider := '...'`. |\n"
                 "| `requires_key` | BOOLEAN | Whether the provider needs an API key (all v1 providers are keyless). |\n"
                 "| `default` | BOOLEAN | Whether this is the default provider. |"
+            ),
+            "vgi.executable_examples": json.dumps(
+                [
+                    {
+                        "description": "List every scholarly-search provider the worker exposes.",
+                        "sql": "SELECT * FROM scholar.main.scholar_providers() ORDER BY provider",
+                    },
+                    {
+                        "description": "Find the default provider used when scholar_search omits provider.",
+                        "sql": 'SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
+                    },
+                    {
+                        "description": "Confirm all providers are keyless (no API key required).",
+                        "sql": (
+                            "SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key"
+                        ),
+                    },
+                ]
             ),
         }
 
