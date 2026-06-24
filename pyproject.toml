@@ -41,6 +41,13 @@ dev = [
     "mypy>=1.10",
     "pydoclint>=0.5",
 ]
+# HTTP transport: the worker can serve over HTTP (`scholar_worker.py --http`, and
+# the HTTP entry `serve.py`) in addition to stdio/AF_UNIX. That path needs
+# vgi-python's `http` extra (waitress). CI's http transport leg installs this via
+# `uv sync --extra http`.
+http = [
+    "vgi-python[http]>=0.8.3",
+]
 
 [project.urls]
 Homepage = "https://query.farm"
