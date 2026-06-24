@@ -29,7 +29,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "vgi-python>=0.8.3",
+    "vgi-python>=0.8.4",
     "httpx>=0.27",
     "pyarrow",
 ]
@@ -46,7 +46,7 @@ dev = [
 # vgi-python's `http` extra (waitress). CI's http transport leg installs this via
 # `uv sync --extra http`.
 http = [
-    "vgi-python[http]>=0.8.3",
+    "vgi-python[http]>=0.8.4",
 ]
 
 [project.urls]

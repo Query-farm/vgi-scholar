@@ -105,14 +105,45 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
         categories = ["search", "scholarly", "research", "rag"]
         examples = [
             FunctionExample(
-                sql="SELECT title, authors, year FROM scholar_search('retrieval augmented generation', count := 5)",
-                description="Top 5 OpenAlex results (the default provider)",
+                sql=(
+                    "SELECT title, authors, year FROM "
+                    "scholar.main.scholar_search('retrieval augmented generation', count := 5)"
+                ),
+                description="Top 5 OpenAlex results (the default provider) for a topic.",
             ),
             FunctionExample(
-                sql="SELECT title, doi FROM scholar_search('graph neural nets', provider := 'crossref', count := 10)",
-                description="Search Crossref instead",
+                sql=(
+                    "SELECT title, doi FROM "
+                    "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
+                ),
+                description="Search Crossref instead of the default OpenAlex provider.",
+            ),
+            FunctionExample(
+                sql=(
+                    "SELECT title, published FROM "
+                    "scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) "
+                    "ORDER BY published DESC"
+                ),
+                description="Pull the 20 most recent arXiv preprints on a topic.",
             ),
         ]
+        tags = {
+            "vgi.columns_md": (
+                "| column | type | description |\n"
+                "|---|---|---|\n"
+                "| `title` | VARCHAR | Work title. |\n"
+                "| `authors` | LIST<VARCHAR> | Author display names, in listed order. |\n"
+                "| `abstract` | VARCHAR | Abstract / summary text, when the provider exposes one. |\n"
+                "| `doi` | VARCHAR | Digital Object Identifier (bare, e.g. `10.1234/abc`), when known. |\n"
+                "| `year` | INTEGER | Publication year. |\n"
+                "| `published` | TIMESTAMPTZ | Publication date as a UTC timestamp, when known. |\n"
+                "| `venue` | VARCHAR | Journal / conference / repository name. |\n"
+                "| `citations_count` | INTEGER | Number of citations the provider reports, when available. |\n"
+                "| `url` | VARCHAR | A landing-page / record URL for the work. |\n"
+                "| `source` | VARCHAR | The provider that produced this row (e.g. `openalex`). |\n"
+                "| `extra` | JSON | Provider-specific fields not in the unified schema, JSON-encoded. |"
+            ),
+        }
 
     @classmethod
     def on_bind(cls, params: BindParams[ScholarSearchArgs]) -> BindResponse:
@@ -217,10 +248,23 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
         categories = ["search", "scholarly", "metadata"]
         examples = [
             FunctionExample(
-                sql="SELECT * FROM scholar_providers()",
-                description="Show every provider scholar_search can use",
+                sql="SELECT * FROM scholar.main.scholar_providers()",
+                description="Show every provider scholar_search can use.",
+            ),
+            FunctionExample(
+                sql='SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
+                description="Find the default provider used when scholar_search omits provider.",
             ),
         ]
+        tags = {
+            "vgi.columns_md": (
+                "| column | type | description |\n"
+                "|---|---|---|\n"
+                "| `provider` | VARCHAR | Provider name to pass as `provider := '...'`. |\n"
+                "| `requires_key` | BOOLEAN | Whether the provider needs an API key (all v1 providers are keyless). |\n"
+                "| `default` | BOOLEAN | Whether this is the default provider. |"
+            ),
+        }
 
     @classmethod
     def cardinality(cls, params: BindParams[_NoArgs]) -> TableCardinality:
