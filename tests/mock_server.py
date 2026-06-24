@@ -183,3 +183,22 @@ class MockServer:
     def __exit__(self, *exc: object) -> None:
         self._httpd.shutdown()
         self._httpd.server_close()
+
+
+def main() -> None:
+    """Run the mock server out of band, printing ``URL:<base>`` then blocking.
+
+    Used by ``ci/run-integration.sh`` (`python -m tests.mock_server`): it starts
+    the server, advertises its bound URL on stdout for the harness to read, then
+    blocks until killed so the URL stays valid for the whole SQL E2E run.
+    """
+    import time
+
+    with MockServer() as server:
+        print(f"URL:{server.base_url}", flush=True)
+        while True:
+            time.sleep(3600)
+
+
+if __name__ == "__main__":
+    main()
