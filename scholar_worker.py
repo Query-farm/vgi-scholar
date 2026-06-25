@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.8.4",
+#     "vgi-python[http]>=0.8.5",
 #     "httpx>=0.27",
 # ]
 # ///
@@ -33,10 +33,12 @@ worker joins OpenAlex's and Crossref's faster "polite pool".
 
 from __future__ import annotations
 
-from vgi import Worker
-from vgi.catalog import Catalog, Schema
+import json
 
-from vgi_scholar.tables import TABLE_FUNCTIONS
+from vgi import Worker
+from vgi.catalog import Catalog, Schema, Table
+
+from vgi_scholar.tables import TABLE_FUNCTIONS, ScholarProvidersFunction
 
 _CATALOG_DESCRIPTION_LLM = (
     "Search scholarly / academic literature from SQL across free, ToS-clean providers "
@@ -89,9 +91,23 @@ _SCHEMA_DESCRIPTION_MD = (
 
 _CATALOG_TAGS = {
     "vgi.title": "Scholarly Literature Search",
-    "vgi.keywords": (
-        "scholarly search, academic literature, papers, publications, openalex, arxiv, crossref, "
-        "doi, citations, preprints, literature review, rag, retrieval, research"
+    "vgi.keywords": json.dumps(
+        [
+            "scholarly search",
+            "academic literature",
+            "papers",
+            "publications",
+            "openalex",
+            "arxiv",
+            "crossref",
+            "doi",
+            "citations",
+            "preprints",
+            "literature review",
+            "rag",
+            "retrieval",
+            "research",
+        ]
     ),
     "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
     "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
@@ -101,8 +117,6 @@ _CATALOG_TAGS = {
     "vgi.support_contact": "https://github.com/Query-farm/vgi-scholar/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-scholar/blob/main/README.md",
 }
-
-_SCHEMA_SOURCE_URL = "https://github.com/Query-farm/vgi-scholar/blob/main/scholar_worker.py"
 
 _SCHEMA_EXAMPLE_QUERIES = (
     "SELECT * FROM scholar.main.scholar_providers();\n"
@@ -115,19 +129,106 @@ _SCHEMA_EXAMPLE_QUERIES = (
 
 _SCHEMA_TAGS = {
     "vgi.title": "Scholar — main",
-    "vgi.keywords": (
-        "scholar_search, scholar_providers, scholarly search, academic literature, openalex, "
-        "arxiv, crossref, doi, citations, literature review, rag"
+    "vgi.keywords": json.dumps(
+        [
+            "scholar_search",
+            "scholar_providers",
+            "scholarly search",
+            "academic literature",
+            "openalex",
+            "arxiv",
+            "crossref",
+            "doi",
+            "citations",
+            "literature review",
+            "rag",
+        ]
     ),
     # VGI123 classifying tags use BARE keys (NOT vgi.-namespaced).
     "domain": "research",
     "category": "search",
     "topic": "scholarly-literature",
-    "vgi.source_url": _SCHEMA_SOURCE_URL,
     "vgi.doc_llm": _SCHEMA_DESCRIPTION_LLM,
     "vgi.doc_md": _SCHEMA_DESCRIPTION_MD,
     "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
 }
+
+_PROVIDERS_TABLE_TAGS = {
+    "vgi.title": "Scholarly Providers",
+    "vgi.keywords": json.dumps(
+        [
+            "providers",
+            "list providers",
+            "scholarly providers",
+            "openalex",
+            "arxiv",
+            "crossref",
+            "default provider",
+            "capability",
+            "discovery",
+            "requires key",
+        ]
+    ),
+    "domain": "research",
+    "category": "search",
+    "topic": "scholarly-literature",
+    "vgi.doc_llm": (
+        "## scholar_providers (table)\n\n"
+        "The fixed set of scholarly-search providers that `scholar_search` can target, one row per "
+        "provider. This is the table form of the `scholar_providers()` function: because it takes no "
+        "arguments and always returns the same rows, you can read it as `SELECT * FROM "
+        "scholar.main.scholar_providers` (no parentheses). Use it to discover the valid values for "
+        "`scholar_search`'s `provider :=` argument, to find the default provider, or to confirm a "
+        "provider is keyless before running a search.\n\n"
+        "Columns: `provider` (the name to pass as `provider := '...'`; unique per row and the table's "
+        "primary key), `requires_key` (true if the provider needs an API key — all current providers "
+        "are keyless, so false), and `default` (true for the single provider used when `scholar_search` "
+        "omits `provider`). Reading this table makes no network calls."
+    ),
+    "vgi.doc_md": (
+        "# scholar_providers (table)\n\n"
+        "Every scholarly-search provider available to `scholar_search`, one row each. This is the "
+        "table form of the parameterless `scholar_providers()` function.\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "-- Every provider scholar_search can use\n"
+        "SELECT * FROM scholar.main.scholar_providers;\n\n"
+        "-- The default provider\n"
+        'SELECT provider FROM scholar.main.scholar_providers WHERE "default";\n'
+        "```\n\n"
+        "## Columns\n\n"
+        "- `provider` (VARCHAR, primary key) — name to pass as `provider := '...'`.\n"
+        "- `requires_key` (BOOLEAN) — whether the provider needs an API key (all v1 providers are keyless).\n"
+        "- `default` (BOOLEAN) — whether this is the default provider; exactly one row is true.\n\n"
+        "## Notes\n\n"
+        "Reading this table needs no network access, so it is a reliable capability/health probe."
+    ),
+    "vgi.example_queries": json.dumps(
+        [
+            {
+                "description": "List every scholarly-search provider the worker exposes.",
+                "sql": "SELECT * FROM scholar.main.scholar_providers ORDER BY provider",
+            },
+            {
+                "description": "Find the default provider used when scholar_search omits provider.",
+                "sql": 'SELECT provider FROM scholar.main.scholar_providers WHERE "default"',
+            },
+            {
+                "description": "Confirm all providers are keyless (no API key required).",
+                "sql": "SELECT count(*) AS keyless FROM scholar.main.scholar_providers WHERE NOT requires_key",
+            },
+        ]
+    ),
+}
+
+_PROVIDERS_TABLE = Table(
+    name="scholar_providers",
+    function=ScholarProvidersFunction,
+    comment="One row per scholarly-search provider scholar_search can target (provider name, keyless flag, default flag)",
+    not_null=("provider", "requires_key", "default"),
+    primary_key=(("provider",),),
+    tags=_PROVIDERS_TABLE_TAGS,
+)
 
 _SCHOLAR_CATALOG = Catalog(
     name="scholar",
@@ -141,6 +242,11 @@ _SCHOLAR_CATALOG = Catalog(
             comment="Scholarly-search table functions: scholar_search (query works) and scholar_providers (list providers)",
             tags=_SCHEMA_TAGS,
             functions=list(TABLE_FUNCTIONS),
+            # scholar_providers takes no arguments and always returns the same
+            # provider rows, so also expose it as a regular table — callers can
+            # then run `SELECT * FROM scholar.main.scholar_providers` (no
+            # parentheses) in addition to the table-function call form.
+            tables=[_PROVIDERS_TABLE],
         ),
     ],
 )

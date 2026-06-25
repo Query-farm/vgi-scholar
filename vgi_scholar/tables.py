@@ -130,11 +130,23 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
         ]
         tags = {
             "vgi.title": "Scholarly Literature Search",
-            "vgi.keywords": (
-                "scholarly search, academic literature, papers, publications, openalex, arxiv, "
-                "crossref, doi, citations, preprints, literature review, rag, retrieval"
+            "vgi.keywords": json.dumps(
+                [
+                    "scholarly search",
+                    "academic literature",
+                    "papers",
+                    "publications",
+                    "openalex",
+                    "arxiv",
+                    "crossref",
+                    "doi",
+                    "citations",
+                    "preprints",
+                    "literature review",
+                    "rag",
+                    "retrieval",
+                ]
             ),
-            "vgi.source_url": ("https://github.com/Query-farm/vgi-scholar/blob/main/vgi_scholar/tables.py"),
             "vgi.doc_llm": (
                 "## scholar_search\n\n"
                 "Search scholarly / academic literature and stream up to `count` matching works as "
@@ -312,11 +324,20 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
         ]
         tags = {
             "vgi.title": "List Scholarly Providers",
-            "vgi.keywords": (
-                "providers, list providers, scholarly providers, openalex, arxiv, crossref, "
-                "default provider, capability, discovery, requires key"
+            "vgi.keywords": json.dumps(
+                [
+                    "providers",
+                    "list providers",
+                    "scholarly providers",
+                    "openalex",
+                    "arxiv",
+                    "crossref",
+                    "default provider",
+                    "capability",
+                    "discovery",
+                    "requires key",
+                ]
             ),
-            "vgi.source_url": ("https://github.com/Query-farm/vgi-scholar/blob/main/vgi_scholar/tables.py"),
             "vgi.doc_llm": (
                 "## scholar_providers\n\n"
                 "Enumerate the scholarly-search providers that `scholar_search` can target, one per row. "
