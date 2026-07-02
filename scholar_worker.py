@@ -150,6 +150,38 @@ _CATALOG_TAGS = {
     "vgi.license": "MIT",
     "vgi.support_contact": "https://github.com/Query-farm/vgi-scholar/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-scholar/blob/main/README.md",
+    # Fixed analyst-task suite for `vgi-lint simulate` (VGI152). Every task grades
+    # against `scholar_providers()`, which is pure, offline metadata (no network),
+    # so the references are deterministic and reproducible in any environment —
+    # unlike `scholar_search`, whose live-provider results vary run to run.
+    "vgi.agent_test_tasks": json.dumps(
+        [
+            {
+                "name": "list_providers",
+                "prompt": ("Which scholarly-search providers can this worker query? List every provider's name."),
+                "reference_sql": "SELECT provider FROM scholar.main.scholar_providers()",
+                "unordered": True,
+                "ignore_column_names": True,
+            },
+            {
+                "name": "default_provider",
+                "prompt": (
+                    "When a scholarly search does not specify a provider, which provider is "
+                    "used by default? Return just that provider's name."
+                ),
+                "reference_sql": 'SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
+                "ignore_column_names": True,
+            },
+            {
+                "name": "keyless_provider_count",
+                "prompt": ("How many of the available scholarly-search providers can be used without an API key?"),
+                "reference_sql": (
+                    "SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key"
+                ),
+                "ignore_column_names": True,
+            },
+        ]
+    ),
 }
 
 _SCHEMA_EXAMPLE_QUERIES = (
@@ -185,6 +217,27 @@ _SCHEMA_TAGS = {
     "vgi.doc_llm": _SCHEMA_DESCRIPTION_LLM,
     "vgi.doc_md": _SCHEMA_DESCRIPTION_MD,
     "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
+    # Navigation registry (VGI408-413): an ordered list of categories that the
+    # schema's objects are grouped under. Each object carries a matching
+    # `vgi.category` naming one of these.
+    "vgi.categories": json.dumps(
+        [
+            {
+                "name": "Search",
+                "description": (
+                    "Full-text scholarly search that streams matching works (title, authors, "
+                    "DOI, year, citations, …) into one unified result schema."
+                ),
+            },
+            {
+                "name": "Providers",
+                "description": (
+                    "Discover the scholarly-search providers the worker can target, which is "
+                    "the default, and whether each is keyless."
+                ),
+            },
+        ]
+    ),
 }
 
 _PROVIDERS_TABLE_TAGS = {
@@ -206,12 +259,14 @@ _PROVIDERS_TABLE_TAGS = {
     "domain": "research",
     "category": "search",
     "topic": "scholarly-literature",
+    "vgi.category": "Providers",
     "vgi.doc_llm": (
         "## scholar_providers (table)\n\n"
         "The fixed set of scholarly-search providers that `scholar_search` can target, one row per "
         "provider. This is the table form of the `scholar_providers()` function: because it takes no "
-        "arguments and always returns the same rows, you can read it as `SELECT * FROM "
-        "scholar.main.scholar_providers` (no parentheses). Use it to discover the valid values for "
+        "arguments and always returns the same rows, you can read it as a plain table — "
+        "`scholar.main.scholar_providers`, no parentheses — rather than calling it as a function. "
+        "Use it to discover the valid values for "
         "`scholar_search`'s `provider :=` argument, to find the default provider, or to confirm a "
         "provider is keyless before running a search.\n\n"
         "Columns: `provider` (the name to pass as `provider := '...'`; unique per row and the table's "

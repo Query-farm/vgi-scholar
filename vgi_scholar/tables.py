@@ -130,6 +130,7 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
         ]
         tags = {
             "vgi.title": "Scholarly Literature Search",
+            "vgi.category": "Search",
             "vgi.keywords": json.dumps(
                 [
                     "scholarly search",
@@ -324,6 +325,7 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
         ]
         tags = {
             "vgi.title": "List Scholarly Providers",
+            "vgi.category": "Providers",
             "vgi.keywords": json.dumps(
                 [
                     "providers",
