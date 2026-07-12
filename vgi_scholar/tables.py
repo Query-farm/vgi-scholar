@@ -179,36 +179,68 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
                 "Search scholarly literature across **OpenAlex** (default), **arXiv**, and **Crossref**, "
                 "returning matches in one normalized schema so SQL never has to branch on the provider.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "-- Top 5 OpenAlex hits for a topic\n"
-                "SELECT title, authors, year\n"
-                "FROM scholar.main.scholar_search('retrieval augmented generation', count := 5);\n\n"
-                "-- Most recent arXiv preprints\n"
-                "SELECT title, published\n"
-                "FROM scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20)\n"
-                "ORDER BY published DESC;\n"
-                "```\n\n"
+                "Call it as a table function, passing the free-text query positionally and refining "
+                "with the named arguments: `provider :=` to pick a source, `count :=` to cap the rows, "
+                "and `page_size :=` to tune paging. Project the unified columns you need (`title`, "
+                "`authors`, `year`, `published`, `doi`, `citations_count`, …) and order or filter as "
+                "usual. Ready-to-run queries are attached as this function's example queries.\n\n"
                 "## Notes\n\n"
                 "- `provider` accepts `openalex`, `arxiv`, or `crossref`; `scholar_providers()` lists them.\n"
                 "- `count` (1–1000) caps the rows returned; the function pages the provider transparently.\n"
                 "- No API key is needed. Set `VGI_SCHOLAR_MAILTO` for the polite pool.\n"
-                "- Network access to the provider API is required; provider errors become DuckDB errors.\n\n"
-                "See [`result_columns`](#) below for the returned columns."
+                "- Network access to the provider API is required; provider errors become DuckDB errors.\n"
+                "- Every row uses the unified result schema: `title`, `authors` (`VARCHAR[]`), `abstract`, "
+                "`doi`, `year`, `published` (`TIMESTAMPTZ`), `venue`, `citations_count`, `url`, `source`, "
+                "and a JSON `extra` column."
             ),
-            "vgi.result_columns_md": (
-                "| column | type | description |\n"
-                "|---|---|---|\n"
-                "| `title` | VARCHAR | Work title. |\n"
-                "| `authors` | LIST<VARCHAR> | Author display names, in listed order. |\n"
-                "| `abstract` | VARCHAR | Abstract / summary text, when the provider exposes one. |\n"
-                "| `doi` | VARCHAR | Digital Object Identifier (bare, e.g. `10.1234/abc`), when known. |\n"
-                "| `year` | INTEGER | Publication year. |\n"
-                "| `published` | TIMESTAMPTZ | Publication date as a UTC timestamp, when known. |\n"
-                "| `venue` | VARCHAR | Journal / conference / repository name. |\n"
-                "| `citations_count` | INTEGER | Number of citations the provider reports, when available. |\n"
-                "| `url` | VARCHAR | A landing-page / record URL for the work. |\n"
-                "| `source` | VARCHAR | The provider that produced this row (e.g. `openalex`). |\n"
-                "| `extra` | JSON | Provider-specific fields not in the unified schema, JSON-encoded. |"
+            # Structured result schema (VGI307/VGI321): JSON [{name,type,description}].
+            # Types are real DuckDB types and are matched against the live output
+            # under --execute (VGI910). Mirrors UNIFIED_SCHEMA in schema_utils.py.
+            "vgi.result_columns_schema": json.dumps(
+                [
+                    {"name": "title", "type": "VARCHAR", "description": "Work title."},
+                    {
+                        "name": "authors",
+                        "type": "VARCHAR[]",
+                        "description": "Author display names, in listed order.",
+                    },
+                    {
+                        "name": "abstract",
+                        "type": "VARCHAR",
+                        "description": "Abstract / summary text, when the provider exposes one.",
+                    },
+                    {
+                        "name": "doi",
+                        "type": "VARCHAR",
+                        "description": "Digital Object Identifier (bare, e.g. 10.1234/abc), when known.",
+                    },
+                    {"name": "year", "type": "INTEGER", "description": "Publication year."},
+                    {
+                        "name": "published",
+                        "type": "TIMESTAMP WITH TIME ZONE",
+                        "description": "Publication date as a UTC timestamp, when known.",
+                    },
+                    {"name": "venue", "type": "VARCHAR", "description": "Journal / conference / repository name."},
+                    {
+                        "name": "citations_count",
+                        "type": "INTEGER",
+                        "description": "Number of citations the provider reports, when available.",
+                    },
+                    {"name": "url", "type": "VARCHAR", "description": "A landing-page / record URL for the work."},
+                    {
+                        "name": "source",
+                        "type": "VARCHAR",
+                        "description": "The provider that produced this row (e.g. openalex).",
+                    },
+                    {
+                        # DuckDB surfaces this JSON-tagged column as VARCHAR under DESCRIBE
+                        # (VGI910), so the declared type must be VARCHAR even though the
+                        # value is a JSON-encoded string.
+                        "name": "extra",
+                        "type": "VARCHAR",
+                        "description": "Provider-specific fields not in the unified schema, as a JSON-encoded string.",
+                    },
+                ]
             ),
         }
 
@@ -315,8 +347,10 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
         categories = ["search", "scholarly", "metadata"]
         examples = [
             FunctionExample(
-                sql="SELECT * FROM scholar.main.scholar_providers()",
-                description="Show every provider scholar_search can use.",
+                sql=(
+                    'SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers() ORDER BY provider'
+                ),
+                description="List every provider scholar_search can use, with its keyless and default flags.",
             ),
             FunctionExample(
                 sql='SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
@@ -360,30 +394,45 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
                 "# scholar_providers\n\n"
                 "List every scholarly-search provider available to `scholar_search`, one row each.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "-- Every provider scholar_search can use\n"
-                "SELECT * FROM scholar.main.scholar_providers();\n\n"
-                "-- The default provider\n"
-                'SELECT provider FROM scholar.main.scholar_providers() WHERE "default";\n'
-                "```\n\n"
+                "Call it with no arguments to enumerate the providers, then filter on the "
+                '`"default"` flag to see which one a search uses when `provider` is omitted, or on '
+                "`requires_key` to confirm a provider is keyless. Runnable queries are attached as "
+                "this function's example queries.\n\n"
                 "## Notes\n\n"
                 "- Returns metadata only — no network access is needed, so this is a reliable health/"
                 "capability check for the worker.\n"
                 "- All current providers are keyless (`requires_key = false`).\n"
                 "- Exactly one row has `default = true`."
             ),
-            "vgi.result_columns_md": (
-                "| column | type | description |\n"
-                "|---|---|---|\n"
-                "| `provider` | VARCHAR | Provider name to pass as `provider := '...'`. |\n"
-                "| `requires_key` | BOOLEAN | Whether the provider needs an API key (all v1 providers are keyless). |\n"
-                "| `default` | BOOLEAN | Whether this is the default provider. |"
+            # Structured result schema (VGI307/VGI321/VGI324): matches _PROVIDERS_SCHEMA
+            # and the backing scholar_providers table.
+            "vgi.result_columns_schema": json.dumps(
+                [
+                    {
+                        "name": "provider",
+                        "type": "VARCHAR",
+                        "description": "Provider name to pass as provider := '...'.",
+                    },
+                    {
+                        "name": "requires_key",
+                        "type": "BOOLEAN",
+                        "description": "Whether the provider needs an API key (all v1 providers are keyless).",
+                    },
+                    {
+                        "name": "default",
+                        "type": "BOOLEAN",
+                        "description": "Whether this is the default provider.",
+                    },
+                ]
             ),
             "vgi.executable_examples": json.dumps(
                 [
                     {
-                        "description": "List every scholarly-search provider the worker exposes.",
-                        "sql": "SELECT * FROM scholar.main.scholar_providers() ORDER BY provider",
+                        "description": "List each provider with its keyless and default flags, alphabetically.",
+                        "sql": (
+                            'SELECT provider, requires_key, "default" '
+                            "FROM scholar.main.scholar_providers() ORDER BY provider"
+                        ),
                     },
                     {
                         "description": "Find the default provider used when scholar_search omits provider.",

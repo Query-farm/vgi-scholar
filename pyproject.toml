@@ -29,7 +29,14 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "vgi-python>=0.9.0",
+    # vgi-python 0.15.0 emits the new table-listing wire schema
+    # (required_filters). The currently released signed `vgi` community extension
+    # — the one the vgi-lint action and the haybarn SQL E2E both `INSTALL vgi FROM
+    # community` at runtime — has been rebuilt to expect exactly that schema, so a
+    # browsable Table (scholar_providers) ATTACHes cleanly at 0.15.0. Do NOT pin
+    # below 0.15.0: the current community extension rejects the older
+    # required_field_filter_paths schema.
+    "vgi-python>=0.15.0",
     "httpx>=0.27",
     "pyarrow",
 ]
@@ -46,7 +53,8 @@ dev = [
 # vgi-python's `http` extra (waitress). CI's http transport leg installs this via
 # `uv sync --extra http`.
 http = [
-    "vgi-python[http]>=0.9.0",
+    # Keep the floor in lockstep with the base `vgi-python` dependency above.
+    "vgi-python[http]>=0.15.0",
 ]
 
 [project.urls]

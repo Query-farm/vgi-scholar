@@ -1,7 +1,10 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.8.5",
+#     # 0.15.0 emits the new table-listing wire schema the rebuilt signed vgi
+#     # community extension now expects; keep at >=0.15.0 (older releases use the
+#     # required_field_filter_paths schema the current extension rejects).
+#     "vgi-python[http]>=0.15.0",
 #     "httpx>=0.27",
 # ]
 # ///
@@ -80,12 +83,12 @@ _CATALOG_DESCRIPTION_MD = (
     "`provider := 'arxiv'` or `provider := 'crossref'` to target a different source.\n"
     "- `scholar_providers()` — list every provider `scholar_search` can target (also queryable "
     "as the table `scholar.main.scholar_providers`), with its keyless and default flags.\n\n"
-    "```sql\n"
-    "INSTALL vgi FROM community; LOAD vgi;\n"
-    "ATTACH 'scholar' (TYPE vgi, LOCATION 'uv run scholar_worker.py');\n\n"
-    "SELECT title, authors, year, doi, citations_count\n"
-    "FROM scholar.scholar_search('retrieval augmented generation', count := 5);\n"
-    "```\n\n"
+    "## Getting started\n\n"
+    "Install and load the signed `vgi` community extension, `ATTACH` this worker at a "
+    "`LOCATION` such as `uv run scholar_worker.py`, and then call the two table functions "
+    "directly. Ready-to-run, copy-paste queries live in this schema's example queries and in "
+    "each function's own examples, so they are executed and coverage-checked rather than "
+    "duplicated inline here.\n\n"
     "Typical uses: find papers by topic, resolve and enrich DOIs, gather citation counts, "
     "assemble a literature-review corpus, or feed a RAG index — all without leaving SQL. "
     "**No API key is required** for any provider; set `VGI_SCHOLAR_MAILTO` to your contact "
@@ -150,15 +153,21 @@ _CATALOG_TAGS = {
     "vgi.license": "MIT",
     "vgi.support_contact": "https://github.com/Query-farm/vgi-scholar/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-scholar/blob/main/README.md",
-    # Fixed analyst-task suite for `vgi-lint simulate` (VGI152). Every task grades
-    # against `scholar_providers()`, which is pure, offline metadata (no network),
-    # so the references are deterministic and reproducible in any environment —
-    # unlike `scholar_search`, whose live-provider results vary run to run.
+    # Fixed analyst-task suite for `vgi-lint simulate` (VGI152/VGI520/VGI920). The
+    # provider-discovery tasks grade against `scholar_providers()`, which is pure,
+    # offline metadata (no network), so their references are deterministic. The
+    # `scholar_search` task instead grades a stable yes/no THRESHOLD predicate
+    # (does a common query return at least N works?) that returns a single BOOLEAN
+    # — robust against live-provider result variation, which an exact-compare
+    # reference on `scholar_search` rows could never be.
     "vgi.agent_test_tasks": json.dumps(
         [
             {
                 "name": "list_providers",
-                "prompt": ("Which scholarly-search providers can this worker query? List every provider's name."),
+                "prompt": (
+                    "Which scholarly-search providers can this worker query? Return a single column "
+                    "listing only each provider's name, one provider per row."
+                ),
                 "reference_sql": "SELECT provider FROM scholar.main.scholar_providers()",
                 "unordered": True,
                 "ignore_column_names": True,
@@ -177,6 +186,17 @@ _CATALOG_TAGS = {
                 "prompt": ("How many of the available scholarly-search providers can be used without an API key?"),
                 "reference_sql": (
                     "SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key"
+                ),
+                "ignore_column_names": True,
+            },
+            {
+                "name": "search_finds_works",
+                "prompt": (
+                    'Search the scholarly literature for the topic "machine learning" and determine '
+                    "whether at least three matching works are found. Answer with a single true/false value."
+                ),
+                "reference_sql": (
+                    "SELECT count(*) >= 3 AS found FROM scholar.main.scholar_search('machine learning', count := 5)"
                 ),
                 "ignore_column_names": True,
             },
@@ -278,13 +298,10 @@ _PROVIDERS_TABLE_TAGS = {
         "# scholar_providers (table)\n\n"
         "Every scholarly-search provider available to `scholar_search`, one row each. This is the "
         "table form of the parameterless `scholar_providers()` function.\n\n"
-        "## Usage\n\n"
-        "```sql\n"
-        "-- Every provider scholar_search can use\n"
-        "SELECT * FROM scholar.main.scholar_providers;\n\n"
-        "-- The default provider\n"
-        'SELECT provider FROM scholar.main.scholar_providers WHERE "default";\n'
-        "```\n\n"
+        "Read it with no parentheses, e.g. `scholar.main.scholar_providers`, to enumerate the "
+        'valid `provider :=` values, filter on the `"default"` flag to see which provider is '
+        "used when a search omits `provider`, or count the `requires_key` column to confirm a "
+        "provider is keyless. Runnable examples are attached as this table's example queries.\n\n"
         "## Columns\n\n"
         "- `provider` (VARCHAR, primary key) — name to pass as `provider := '...'`.\n"
         "- `requires_key` (BOOLEAN) — whether the provider needs an API key (all v1 providers are keyless).\n"
@@ -295,8 +312,10 @@ _PROVIDERS_TABLE_TAGS = {
     "vgi.example_queries": json.dumps(
         [
             {
-                "description": "List every scholarly-search provider the worker exposes.",
-                "sql": "SELECT * FROM scholar.main.scholar_providers ORDER BY provider",
+                "description": "List each provider with its keyless and default flags, alphabetically.",
+                "sql": (
+                    'SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers ORDER BY provider'
+                ),
             },
             {
                 "description": "Find the default provider used when scholar_search omits provider.",
