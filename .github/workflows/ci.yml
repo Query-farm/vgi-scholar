@@ -90,7 +90,10 @@ jobs:
       - name: vgi-lint
         uses: Query-farm/vgi-lint-check@v1
         with:
-          location: "uv run --no-sync scholar_worker.py"
+          # Run the worker via the synced project venv (locked vgi-python), NOT
+          # `uv run scholar_worker.py`: the PEP-723 inline-script env caches a
+          # stale SDK and can emit the old catalog schema, a false mismatch.
+          location: ".venv/bin/python scholar_worker.py"
           fail-on: info
 
   # Resolve the latest published haybarn release once, so the whole matrix tests

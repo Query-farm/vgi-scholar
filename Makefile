@@ -13,9 +13,10 @@
 # harness) via the VGI_SCHOLAR_*_BASE_URL env vars, so NOTHING in the CI gate
 # touches a live external API.
 
-# Worker stdio command (overridable). The PEP-723 header in scholar_worker.py
-# pins httpx, so `uv run` gives the worker its dependency.
-WORKER_STDIO   ?= uv run --python 3.13 scholar_worker.py
+# Worker stdio command (overridable). Use the synced project venv python so the
+# worker runs the LOCKED vgi-python (`uv sync`), NOT the PEP-723 inline-script env
+# `uv run` would resolve — that env caches a stale SDK and can drift from the lock.
+WORKER_STDIO   ?= $(CURDIR)/.venv/bin/python $(CURDIR)/scholar_worker.py
 
 # haybarn-unittest: the DuckDB sqllogictest runner (uv tool install haybarn-unittest).
 HAYBARN        ?= haybarn-unittest

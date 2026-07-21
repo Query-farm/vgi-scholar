@@ -155,12 +155,13 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
                 "whenever an agent needs to find papers by topic, resolve DOIs, gather citation counts, "
                 "assemble a literature review, or build a corpus for retrieval-augmented generation (RAG).\n\n"
                 "### Inputs\n"
-                "- `query` (positional, VARCHAR) — free-text search string, e.g. `'retrieval augmented generation'`.\n"
-                "- `provider :=` (VARCHAR, default `'openalex'`) — one of `'openalex'`, `'arxiv'`, `'crossref'`. "
+                "- `query` (positional, `VARCHAR`) — free-text search string, "
+                "e.g. `'retrieval augmented generation'`.\n"
+                "- `provider :=` (`VARCHAR`, default `'openalex'`) — one of `'openalex'`, `'arxiv'`, `'crossref'`. "
                 "Call `scholar_providers()` to enumerate the valid values.\n"
-                "- `count :=` (INTEGER, default 10, 1–1000) — maximum rows to return; the function pages the "
+                "- `count :=` (`INTEGER`, default 10, 1–1000) — maximum rows to return; the function pages the "
                 "provider until this budget is met or results are exhausted.\n"
-                "- `page_size :=` (INTEGER, default 0, 0–200) — rows fetched per provider request; 0 picks an "
+                "- `page_size :=` (`INTEGER`, default 0, 0–200) — rows fetched per provider request; 0 picks an "
                 "automatic page size.\n\n"
                 "### Output\n"
                 "One row per work in the unified schema (`title`, `authors`, `abstract`, `doi`, `year`, "
@@ -192,6 +193,35 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
                 "- Every row uses the unified result schema: `title`, `authors` (`VARCHAR[]`), `abstract`, "
                 "`doi`, `year`, `published` (`TIMESTAMPTZ`), `venue`, `citations_count`, `url`, `source`, "
                 "and a JSON `extra` column."
+            ),
+            # Described example carrier (VGI515): the native duckdb_functions()
+            # examples column drops descriptions, so mirror the Meta.examples list
+            # here as JSON [{description, sql}] so every example keeps its prose.
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": "Top 5 OpenAlex results (the default provider) for a topic.",
+                        "sql": (
+                            "SELECT title, authors, year FROM "
+                            "scholar.main.scholar_search('retrieval augmented generation', count := 5)"
+                        ),
+                    },
+                    {
+                        "description": "Search Crossref instead of the default OpenAlex provider.",
+                        "sql": (
+                            "SELECT title, doi FROM "
+                            "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
+                        ),
+                    },
+                    {
+                        "description": "Pull the 20 most recent arXiv preprints on a topic.",
+                        "sql": (
+                            "SELECT title, published FROM "
+                            "scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) "
+                            "ORDER BY published DESC"
+                        ),
+                    },
+                ]
             ),
             # Structured result schema (VGI307/VGI321): JSON [{name,type,description}].
             # Types are real DuckDB types and are matched against the live output
@@ -383,8 +413,8 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
                 "Takes no arguments.\n\n"
                 "### Output\n"
                 "One row per registered provider with `provider` (the name to pass as `provider := '...'`), "
-                "`requires_key` (BOOLEAN — all current providers are keyless, so `false`), and `default` "
-                "(BOOLEAN — true for the provider used when `scholar_search` omits `provider`).\n\n"
+                "`requires_key` (`BOOLEAN` — all current providers are keyless, so `false`), and `default` "
+                "(`BOOLEAN` — true for the provider used when `scholar_search` omits `provider`).\n\n"
                 "### Behavior & edge cases\n"
                 "- Pure metadata: it makes **no** network calls and works without any external API, so it is "
                 "always safe to run as a capability/discovery probe.\n"
@@ -403,6 +433,26 @@ class ScholarProvidersFunction(TableFunctionGenerator[_NoArgs, None]):
                 "capability check for the worker.\n"
                 "- All current providers are keyless (`requires_key = false`).\n"
                 "- Exactly one row has `default = true`."
+            ),
+            # Described example carrier (VGI515): mirror the Meta.examples list as
+            # JSON [{description, sql}] so each example keeps its description (the
+            # native duckdb_functions() examples column drops it).
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": (
+                            "List every provider scholar_search can use, with its keyless and default flags."
+                        ),
+                        "sql": (
+                            'SELECT provider, requires_key, "default" '
+                            "FROM scholar.main.scholar_providers() ORDER BY provider"
+                        ),
+                    },
+                    {
+                        "description": "Find the default provider used when scholar_search omits provider.",
+                        "sql": 'SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
+                    },
+                ]
             ),
             # Structured result schema (VGI307/VGI321/VGI324): matches _PROVIDERS_SCHEMA
             # and the backing scholar_providers table.

@@ -1,10 +1,10 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     # 0.15.0 emits the new table-listing wire schema the rebuilt signed vgi
-#     # community extension now expects; keep at >=0.15.0 (older releases use the
-#     # required_field_filter_paths schema the current extension rejects).
-#     "vgi-python[http]>=0.15.0",
+#     # 0.16.x emits the current table-listing wire schema the rebuilt signed vgi
+#     # community extension now expects; keep at >=0.16.0 (older releases use the
+#     # required_field_filter_paths / 31-field schema the current extension rejects).
+#     "vgi-python[http]>=0.16.0",
 #     "httpx>=0.27",
 # ]
 # ///
@@ -204,13 +204,34 @@ _CATALOG_TAGS = {
     ),
 }
 
-_SCHEMA_EXAMPLE_QUERIES = (
-    "SELECT * FROM scholar.main.scholar_providers();\n"
-    'SELECT provider FROM scholar.main.scholar_providers() WHERE "default";\n'
-    "SELECT title, authors, year FROM "
-    "scholar.main.scholar_search('retrieval augmented generation', count := 5);\n"
-    "SELECT title, doi FROM "
-    "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10);"
+# VGI515/VGI514: a JSON list of described {description, sql} examples (not a bare
+# SQL string, and no trivial `SELECT *`) so each schema example carries prose and
+# demonstrates a real projection/filter.
+_SCHEMA_EXAMPLE_QUERIES = json.dumps(
+    [
+        {
+            "description": "List each provider with its keyless and default flags, alphabetically.",
+            "sql": ('SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers ORDER BY provider'),
+        },
+        {
+            "description": "Find the default provider used when scholar_search omits provider.",
+            "sql": 'SELECT provider FROM scholar.main.scholar_providers WHERE "default"',
+        },
+        {
+            "description": "Fetch the top 5 OpenAlex (default provider) results for a topic.",
+            "sql": (
+                "SELECT title, authors, year FROM "
+                "scholar.main.scholar_search('retrieval augmented generation', count := 5)"
+            ),
+        },
+        {
+            "description": "Search Crossref instead of the default provider and pull DOIs.",
+            "sql": (
+                "SELECT title, doi FROM "
+                "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
+            ),
+        },
+    ]
 )
 
 _SCHEMA_TAGS = {
@@ -303,9 +324,9 @@ _PROVIDERS_TABLE_TAGS = {
         "used when a search omits `provider`, or count the `requires_key` column to confirm a "
         "provider is keyless. Runnable examples are attached as this table's example queries.\n\n"
         "## Columns\n\n"
-        "- `provider` (VARCHAR, primary key) — name to pass as `provider := '...'`.\n"
-        "- `requires_key` (BOOLEAN) — whether the provider needs an API key (all v1 providers are keyless).\n"
-        "- `default` (BOOLEAN) — whether this is the default provider; exactly one row is true.\n\n"
+        "- `provider` (`VARCHAR`, primary key) — name to pass as `provider := '...'`.\n"
+        "- `requires_key` (`BOOLEAN`) — whether the provider needs an API key (all v1 providers are keyless).\n"
+        "- `default` (`BOOLEAN`) — whether this is the default provider; exactly one row is true.\n\n"
         "## Notes\n\n"
         "Reading this table needs no network access, so it is a reliable capability/health probe."
     ),
