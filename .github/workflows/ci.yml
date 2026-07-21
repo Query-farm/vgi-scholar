@@ -15,6 +15,8 @@ on:
     branches: [main]
     paths-ignore: ['README.md']
   workflow_dispatch:
+  # Allow docker-publish.yml / release.yml to gate on this workflow.
+  workflow_call:
 
 permissions:
   contents: read

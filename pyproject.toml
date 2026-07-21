@@ -56,6 +56,16 @@ http = [
     # Keep the floor in lockstep with the base `vgi-python` dependency above.
     "vgi-python[http]>=0.16.0",
 ]
+# Alias of `http` used by the Docker image (`pip install '.[serve]'`) to install
+# the HTTP-serving stack (vgi-python's waitress-backed `http` extra). Kept in
+# lockstep with the `http` extra and the base `vgi-python` floor above.
+serve = ["vgi-python[http]>=0.16.0"]
+
+[project.scripts]
+# Console script so DuckDB can spawn the worker by name (and the Docker image's
+# stdio transport can `exec vgi-scholar-worker`). Points at the wheel-importable
+# worker main; `scholar_worker.py` is a thin PEP-723 shim re-exporting the same.
+vgi-scholar-worker = "vgi_scholar.worker:main"
 
 [project.urls]
 Homepage = "https://query.farm"
