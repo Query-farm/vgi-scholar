@@ -36,7 +36,7 @@ dependencies = [
     # browsable Table (scholar_providers) ATTACHes cleanly at 0.16.x. Do NOT pin
     # below 0.16.0: the current community extension rejects the older
     # required_field_filter_paths / 31-field schema earlier releases emit.
-    "vgi-python>=0.16.0",
+    "vgi-python>=0.30.0",
     "httpx>=0.27",
     "pyarrow",
 ]
@@ -54,7 +54,7 @@ dev = [
 # `uv sync --extra http`.
 http = [
     # Keep the floor in lockstep with the base `vgi-python` dependency above.
-    "vgi-python[http]>=0.16.0",
+    "vgi-python[http]>=0.30.0",
 ]
 # Alias of `http` used by the Docker image (`pip install '.[serve]'`) to install
 # the HTTP-serving stack (vgi-python's waitress-backed `http` extra). Kept in
