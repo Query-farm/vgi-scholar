@@ -29,14 +29,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    # vgi-python 0.16.x emits the current table-listing wire schema
-    # (required_filters). The currently released signed `vgi` community extension
-    # — the one the vgi-lint action and the haybarn SQL E2E both `INSTALL vgi FROM
-    # community` at runtime — has been rebuilt to expect exactly that schema, so a
-    # browsable Table (scholar_providers) ATTACHes cleanly at 0.16.x. Do NOT pin
-    # below 0.16.0: the current community extension rejects the older
-    # required_field_filter_paths / 31-field schema earlier releases emit.
-    "vgi-python>=0.30.0",
+    # vgi-python 0.46.x speaks VGI protocol 2.x, which the currently released
+    # signed `vgi` community extension — the one the vgi-lint action and the
+    # haybarn SQL E2E both `INSTALL vgi FROM community` at runtime — requires.
+    # Do NOT pin below 0.46.1: older releases speak protocol 1.x and ATTACH
+    # fails with a protocol_version mismatch.
+    "vgi-python>=0.46.1",
     "httpx>=0.27",
     "pyarrow",
 ]
@@ -46,6 +44,7 @@ dev = [
     "pytest>=8",
     "ruff>=0.5",
     "mypy>=1.10",
+    "pyarrow-stubs",
     "pydoclint>=0.5",
 ]
 # HTTP transport: the worker can serve over HTTP (`scholar_worker.py --http`, and
@@ -54,12 +53,12 @@ dev = [
 # `uv sync --extra http`.
 http = [
     # Keep the floor in lockstep with the base `vgi-python` dependency above.
-    "vgi-python[http]>=0.30.0",
+    "vgi-python[http]>=0.46.1",
 ]
 # Alias of `http` used by the Docker image (`pip install '.[serve]'`) to install
 # the HTTP-serving stack (vgi-python's waitress-backed `http` extra). Kept in
 # lockstep with the `http` extra and the base `vgi-python` floor above.
-serve = ["vgi-python[http]>=0.16.0"]
+serve = ["vgi-python[http]>=0.46.1"]
 
 [project.scripts]
 # Console script so DuckDB can spawn the worker by name (and the Docker image's

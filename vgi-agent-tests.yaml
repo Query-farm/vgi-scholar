@@ -1,0 +1,17 @@
+# Private graders for `vgi-lint simulate` (VGI416). The worker publishes only
+# task names and prompts in vgi.agent_test_tasks; these canonical solutions and
+# grading options stay in the repo and are merged by task name.
+tasks:
+  - name: list_providers
+    reference_sql: "SELECT provider FROM scholar.main.scholar_providers()"
+    ignore_column_names: true
+    unordered: true
+  - name: default_provider
+    reference_sql: "SELECT provider FROM scholar.main.scholar_providers() WHERE \"default\""
+    ignore_column_names: true
+  - name: keyless_provider_count
+    reference_sql: "SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key"
+    ignore_column_names: true
+  - name: search_finds_works
+    reference_sql: "SELECT count(*) >= 3 AS found FROM scholar.main.scholar_search('machine learning', count := 5)"
+    ignore_column_names: true

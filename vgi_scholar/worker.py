@@ -153,7 +153,9 @@ _CATALOG_TAGS = {
     "vgi.license": "MIT",
     "vgi.support_contact": "https://github.com/Query-farm/vgi-scholar/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-scholar/blob/main/README.md",
-    # Fixed analyst-task suite for `vgi-lint simulate` (VGI152/VGI520/VGI920). The
+    # Fixed analyst-task suite for `vgi-lint simulate` (VGI152/VGI520/VGI920). Only
+    # task names and prompts are published here (VGI416); the grader-only reference
+    # queries live in vgi-agent-tests.yaml at the repo root. The
     # provider-discovery tasks grade against `scholar_providers()`, which is pure,
     # offline metadata (no network), so their references are deterministic. The
     # `scholar_search` task instead grades a stable yes/no THRESHOLD predicate
@@ -168,9 +170,6 @@ _CATALOG_TAGS = {
                     "Which scholarly-search providers can this worker query? Return a single column "
                     "listing only each provider's name, one provider per row."
                 ),
-                "reference_sql": "SELECT provider FROM scholar.main.scholar_providers()",
-                "unordered": True,
-                "ignore_column_names": True,
             },
             {
                 "name": "default_provider",
@@ -178,16 +177,10 @@ _CATALOG_TAGS = {
                     "When a scholarly search does not specify a provider, which provider is "
                     "used by default? Return just that provider's name."
                 ),
-                "reference_sql": 'SELECT provider FROM scholar.main.scholar_providers() WHERE "default"',
-                "ignore_column_names": True,
             },
             {
                 "name": "keyless_provider_count",
                 "prompt": ("How many of the available scholarly-search providers can be used without an API key?"),
-                "reference_sql": (
-                    "SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key"
-                ),
-                "ignore_column_names": True,
             },
             {
                 "name": "search_finds_works",
@@ -195,10 +188,6 @@ _CATALOG_TAGS = {
                     'Search the scholarly literature for the topic "machine learning" and determine '
                     "whether at least three matching works are found. Answer with a single true/false value."
                 ),
-                "reference_sql": (
-                    "SELECT count(*) >= 3 AS found FROM scholar.main.scholar_search('machine learning', count := 5)"
-                ),
-                "ignore_column_names": True,
             },
         ]
     ),
@@ -369,7 +358,7 @@ _SCHOLAR_CATALOG = Catalog(
     source_url="https://github.com/Query-farm/vgi-scholar",
     schemas=[
         Schema(
-            name="main",
+            path=["main"],
             comment=(
                 "Scholarly-search table functions: scholar_search (query works) and scholar_providers (list providers)"
             ),

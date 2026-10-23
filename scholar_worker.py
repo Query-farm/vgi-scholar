@@ -1,10 +1,10 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     # 0.16.x emits the current table-listing wire schema the rebuilt signed vgi
-#     # community extension now expects; keep at >=0.16.0 (older releases use the
-#     # required_field_filter_paths / 31-field schema the current extension rejects).
-#     "vgi-python[http]>=0.16.0",
+#     # 0.46.x speaks VGI protocol 2.x, which the signed vgi community extension
+#     # requires; keep at >=0.46.1 (older releases speak protocol 1.x and ATTACH
+#     # fails with a protocol_version mismatch).
+#     "vgi-python[http]>=0.46.1",
 #     "httpx>=0.27",
 # ]
 # ///
