@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 
 from vgi import Worker
-from vgi.catalog import Catalog, Schema, Table
+from vgi.catalog import Catalog, ConstraintInfo, Schema, Table, constraint_record
 
 from vgi_scholar.tables import TABLE_FUNCTIONS, ScholarProvidersFunction
 
@@ -339,14 +339,39 @@ _PROVIDERS_TABLE_TAGS = {
     ),
 }
 
+
+def _trusted(table: str, constraint_id: str, kind: str, columns: list[list[str]]) -> ConstraintInfo:
+    """Build an ENFORCED + ALL_ROWS constraint record on a ``main``-schema table.
+
+    DuckDB only accepts trusted (ENFORCED, ALL_ROWS) records, and every row the
+    worker serves satisfies them.
+
+    Args:
+        table: Name of the table the constraint belongs to.
+        constraint_id: Identifier unique within the table.
+        kind: Constraint kind (``PRIMARY_KEY``, ``NOT_NULL``, ...).
+        columns: Column paths the constraint covers, e.g. ``[["provider"]]``.
+
+    Returns:
+        The canonical constraint record.
+    """
+    return constraint_record(
+        ["main"], table, constraint_id, kind, columns, enforcement="ENFORCED", validation="ALL_ROWS"
+    )
+
+
 _PROVIDERS_TABLE = Table(
     name="scholar_providers",
     function=ScholarProvidersFunction,
     comment=(
         "One row per scholarly-search provider scholar_search can target (provider name, keyless flag, default flag)"
     ),
-    not_null=("provider", "requires_key", "default"),
-    primary_key=(("provider",),),
+    constraints=(
+        _trusted("scholar_providers", "pk", "PRIMARY_KEY", [["provider"]]),
+        _trusted("scholar_providers", "provider_not_null", "NOT_NULL", [["provider"]]),
+        _trusted("scholar_providers", "requires_key_not_null", "NOT_NULL", [["requires_key"]]),
+        _trusted("scholar_providers", "default_not_null", "NOT_NULL", [["default"]]),
+    ),
     tags=_PROVIDERS_TABLE_TAGS,
 )
 

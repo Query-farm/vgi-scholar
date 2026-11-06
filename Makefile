@@ -18,7 +18,11 @@
 # `uv run` would resolve — that env caches a stale SDK and can drift from the lock.
 WORKER_STDIO   ?= $(CURDIR)/.venv/bin/python $(CURDIR)/scholar_worker.py
 
-# haybarn-unittest: the DuckDB sqllogictest runner (uv tool install 'haybarn-unittest<2').
+# haybarn-unittest: the DuckDB sqllogictest runner
+#   uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'   # ~/.local/bin/haybarn-unittest
+# haybarn 2.0 is required: its community `vgi` extension is the one that speaks the
+# worker's VGI protocol (vgi.v3 / 3.1). --keep-home lets the runner see the
+# extensions installed under the real $HOME (haybarn-unittest 2.0 isolates it).
 HAYBARN        ?= haybarn-unittest
 TEST_DIR        = .
 TEST_PATTERN    = test/sql/*
@@ -39,7 +43,7 @@ pytest:
 test-sql:
 	@command -v $(HAYBARN) >/dev/null 2>&1 || { \
 		echo "ERROR: $(HAYBARN) not found. Install it with:" >&2; \
-		echo "  uv tool install 'haybarn-unittest<2'" >&2; \
+		echo "  uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'" >&2; \
 		echo "  (then ensure ~/.local/bin is on PATH)" >&2; \
 		exit 1; \
 	}

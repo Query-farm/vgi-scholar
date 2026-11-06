@@ -46,7 +46,7 @@ def main() -> int:
 
         print(f"mock provider server at {server.base_url}; running {haybarn} {pattern}")
         proc = subprocess.run(
-            [haybarn, "--test-dir", test_dir, pattern],
+            [haybarn, "--keep-home", "--test-dir", test_dir, pattern],
             env=env,
         )
         return proc.returncode

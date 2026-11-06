@@ -14,7 +14,9 @@ extension from the Haybarn community channel:
 1. **Install the worker** — `uv sync --frozen --extra http` into a venv.
    `scholar_worker.py` is a self-contained PEP 723 stdio worker the extension
    can spawn via `uv run scholar_worker.py`.
-2. **Download the runner** — the matching `haybarn_unittest-*` asset per platform.
+2. **Download the runner** — the newest `haybarn-v2.0.*` release (haybarn 2.0's
+   community `vgi` extension is the one that speaks the worker's VGI protocol,
+   vgi.v3 / 3.1), the matching `haybarn_unittest-*` asset per platform.
 3. **Preprocess** — [`preprocess-require.awk`](preprocess-require.awk) rewrites
    each `require <ext>` into an explicit signed `INSTALL <ext> FROM
    {community,core}; LOAD <ext>;`, and injects `INSTALL vgi FROM community;`
@@ -24,7 +26,7 @@ extension from the Haybarn community channel:
 4. **Run** — [`run-integration.sh`](run-integration.sh) stages the preprocessed
    tree, starts the mock provider server, resolves `VGI_SCHOLAR_WORKER` (the
    ATTACH `LOCATION`) per `$TRANSPORT`, warms the extension cache once, then runs
-   the suite in a single `haybarn-unittest` invocation. Any failed assertion
+   the suite in a single `haybarn-unittest --keep-home` invocation. Any failed assertion
    fails the job.
 
 ## The mock-driven worker (all transports)
