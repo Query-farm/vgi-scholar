@@ -1,6 +1,6 @@
 [project]
 name = "vgi-scholar"
-version = "0.2.0"
+version = "0.3.0"
 description = "Search scholarly literature (OpenAlex / arXiv / Crossref) from SQL as VGI DuckDB table functions"
 readme = "README.md"
 requires-python = ">=3.13"
