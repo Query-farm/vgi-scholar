@@ -15,7 +15,7 @@ single unified schema, so a query never has to know which API produced a row.
 
 ```sql
 INSTALL vgi FROM community; LOAD vgi;
-ATTACH 'scholar' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-scholar@v0.2.0 vgi-scholar-worker');
+ATTACH 'scholar' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-scholar@v0.3.0 vgi-scholar-worker');
 
 -- top-N results from OpenAlex (the default provider)
 SELECT title, authors, year, doi, citations_count
@@ -41,7 +41,7 @@ The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'scholar' AS scholar (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-scholar@v0.2.0 vgi-scholar-worker');
+ATTACH 'scholar' AS scholar (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-scholar@v0.3.0 vgi-scholar-worker');
 
 -- List each provider with its keyless and default flags, alphabetically.
 SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers ORDER BY provider;
@@ -50,7 +50,7 @@ SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers ORD
 SELECT provider FROM scholar.main.scholar_providers WHERE "default";
 ```
 
-Change `@v0.2.0` to move to a newer release.
+Change `@v0.3.0` to move to a newer release.
 
 The default providers (OpenAlex, arXiv, Crossref) are free and need no API key, but the worker does need outbound network access to them. Set `VGI_SCHOLAR_MAILTO` to a contact e-mail in the environment that launches the worker so OpenAlex and Crossref serve you from their polite pool; see [Polite-pool norms](#polite-pool-norms-please-configure).
 
@@ -59,7 +59,7 @@ The default providers (OpenAlex, arXiv, Crossref) are free and need no API key, 
 - **Docker** (the image bundles the worker and its dependencies):
 
   ```sql
-  ATTACH 'scholar' AS scholar (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-scholar:0.2.0');
+  ATTACH 'scholar' AS scholar (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-scholar:0.3.0');
   ```
 
 - **From a local checkout** (`git clone https://github.com/Query-farm/vgi-scholar`), point `LOCATION` at `uv run --project /path/to/vgi-scholar vgi-scholar-worker`.
