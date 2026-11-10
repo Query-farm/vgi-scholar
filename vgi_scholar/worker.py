@@ -128,6 +128,7 @@ _SCHEMA_DESCRIPTION_MD = (
 
 _CATALOG_TAGS = {
     "vgi.title": "Scholarly Literature Search",
+    "vgi.subtitle": "Search OpenAlex, arXiv, and Crossref for papers from SQL, with one unified result schema.",
     "vgi.keywords": json.dumps(
         [
             "scholarly search",
@@ -224,7 +225,8 @@ _SCHEMA_EXAMPLE_QUERIES = json.dumps(
 )
 
 _SCHEMA_TAGS = {
-    "vgi.title": "Scholar — main",
+    "vgi.title": "Scholar",
+    "vgi.subtitle": "Keyless scholarly search functions and the providers they can query.",
     "vgi.keywords": json.dumps(
         [
             "scholar_search",
