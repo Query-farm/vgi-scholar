@@ -1,6 +1,6 @@
 [project]
 name = "vgi-scholar"
-version = "0.3.0"
+version = "0.4.0"
 description = "Search scholarly literature (OpenAlex / arXiv / Crossref) from SQL as VGI DuckDB table functions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -29,12 +29,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    # vgi-python 0.50.x speaks VGI protocol vgi.v3 (3.2), which the haybarn 2.0
+    # vgi-python 0.51.x speaks VGI protocol vgi.v3 (3.3), which the haybarn 2.0
     # signed `vgi` community extension — the one the vgi-lint action and the
     # haybarn SQL E2E both `INSTALL vgi FROM community` at runtime — requires.
-    # Do NOT pin below 0.50.0: older releases speak 3.1 or earlier and ATTACH
+    # Do NOT pin below 0.51.0: older releases speak 3.2 or earlier and ATTACH
     # fails with a protocol_version mismatch.
-    "vgi-python>=0.50.0",
+    "vgi-python>=0.51.0",
     "httpx>=0.27",
     "pyarrow",
 ]
@@ -53,12 +53,12 @@ dev = [
 # `uv sync --extra http`.
 http = [
     # Keep the floor in lockstep with the base `vgi-python` dependency above.
-    "vgi-python[http]>=0.50.0",
+    "vgi-python[http]>=0.51.0",
 ]
 # Alias of `http` used by the Docker image (`pip install '.[serve]'`) to install
 # the HTTP-serving stack (vgi-python's waitress-backed `http` extra). Kept in
 # lockstep with the `http` extra and the base `vgi-python` floor above.
-serve = ["vgi-python[http]>=0.50.0"]
+serve = ["vgi-python[http]>=0.51.0"]
 
 [project.scripts]
 # Console script so DuckDB can spawn the worker by name (and the Docker image's

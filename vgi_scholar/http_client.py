@@ -35,7 +35,7 @@ _BACKOFF_BASE = 0.5
 _MAILTO_ENV = "VGI_SCHOLAR_MAILTO"
 _DEFAULT_MAILTO = "vgi-scholar@example.com"
 
-_VERSION = "0.3.0"
+_VERSION = "0.4.0"
 
 
 class ProviderError(RuntimeError):

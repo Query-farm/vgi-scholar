@@ -4,7 +4,7 @@
 #     # 0.46.x speaks VGI protocol 2.x, which the signed vgi community extension
 #     # requires; keep at >=0.46.1 (older releases speak protocol 1.x and ATTACH
 #     # fails with a protocol_version mismatch).
-#     "vgi-python[http]>=0.50.0",
+#     "vgi-python[http]>=0.51.0",
 #     "httpx>=0.27",
 # ]
 # ///
