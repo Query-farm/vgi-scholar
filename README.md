@@ -254,3 +254,7 @@ Written by [Query.Farm](https://query.farm).
 
 Copyright 2026 Query Farm LLC - https://query.farm
 
+
+## Executed notebooks
+
+See the [Scholar notebook](notebooks/README.md) for a reproducible cross-provider DOI and citation comparison.

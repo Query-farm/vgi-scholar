@@ -1,0 +1,28 @@
+{
+  "openalex": {
+    "url": "https://api.openalex.org/works?search=attention+is+all+you+need+transformer&per_page=50&cursor=%2A&mailto=vgi-scholar%40example.com",
+    "captured_utc": "2026-11-14T10:01:23.436267+00:00",
+    "sha256": "55b64f82cd283d131f7e5f25e2fcaadd34c6477181d662173155ef4f6e8fa64f",
+    "parameters": {
+      "search": "attention is all you need transformer",
+      "per_page": 50,
+      "cursor": "*",
+      "mailto": "vgi-scholar@example.com"
+    },
+    "http_status": 200
+  },
+  "crossref": {
+    "url": "https://api.crossref.org/works?query=attention+is+all+you+need+transformer&rows=50&cursor=%2A&sort=score&order=desc&mailto=vgi-scholar%40example.com",
+    "captured_utc": "2026-11-14T10:01:26.861223+00:00",
+    "sha256": "bb60776d1cf82d9616c08ce00f5891161278b68787d59a78e93748c0219bbc0a",
+    "parameters": {
+      "query": "attention is all you need transformer",
+      "rows": 50,
+      "cursor": "*",
+      "sort": "score",
+      "order": "desc",
+      "mailto": "vgi-scholar@example.com"
+    },
+    "http_status": 200
+  }
+}
