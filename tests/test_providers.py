@@ -178,3 +178,11 @@ class TestCrossref:
         _patch_get(monkeypatch, "crossref.json")
         page = CrossrefProvider("http://mock").search("rag", count=10, cursor=None, opts={})
         assert page.next_cursor == "AoJ3x+next+cursor+token"
+
+    def test_cursor_requests_keep_relevance_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Crossref's deep paging ignores relevance unless sort=score is explicit.
+        captured = _patch_get(monkeypatch, "crossref.json")
+        CrossrefProvider("http://mock").search("rag", count=10, cursor="NEXT", opts={})
+        assert captured["params"]["cursor"] == "NEXT"
+        assert captured["params"]["sort"] == "score"
+        assert captured["params"]["order"] == "desc"

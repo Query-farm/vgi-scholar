@@ -56,6 +56,92 @@ def base_url_override(provider: str) -> str | None:
     return value.strip() if value and value.strip() else None
 
 
+# Composed examples: each combines two scholar_search calls against DIFFERENT
+# providers, which is where the unified schema pays off. Defined once here and
+# reused by the function's example list and the schema-level example list.
+CROSS_PROVIDER_DOI_EXAMPLE = FunctionExample(
+    sql=(
+        "WITH oa AS ("
+        "SELECT lower(doi) AS doi, title, citations_count AS openalex_citations "
+        "FROM scholar.main.scholar_search('attention is all you need transformer', count := 25) "
+        "WHERE doi IS NOT NULL), "
+        "cr AS ("
+        "SELECT lower(doi) AS doi, citations_count AS crossref_citations "
+        "FROM scholar.main.scholar_search('attention is all you need transformer', "
+        "provider := 'crossref', count := 25) "
+        "WHERE doi IS NOT NULL) "
+        "SELECT oa.doi, oa.title, oa.openalex_citations, cr.crossref_citations "
+        "FROM oa JOIN cr USING (doi) "
+        "ORDER BY oa.openalex_citations DESC, oa.doi"
+    ),
+    description=(
+        "Match the top 25 OpenAlex and top 25 Crossref results for one topic by DOI and "
+        "compare the citation count each provider reports for the same work."
+    ),
+)
+
+ARXIV_CITATIONS_EXAMPLE = FunctionExample(
+    sql=(
+        "WITH preprints AS ("
+        "SELECT title, year FROM scholar.main.scholar_search('masked autoencoders vision transformers', "
+        "provider := 'arxiv', count := 25)), "
+        "indexed AS ("
+        "SELECT title, citations_count FROM "
+        "scholar.main.scholar_search('masked autoencoders vision transformers', count := 25)) "
+        "SELECT p.title, p.year, max(i.citations_count) AS openalex_citations "
+        "FROM preprints AS p JOIN indexed AS i ON lower(trim(p.title)) = lower(trim(i.title)) "
+        "GROUP BY p.title, p.year "
+        "ORDER BY openalex_citations DESC, p.title"
+    ),
+    description=(
+        "Attach OpenAlex citation counts to arXiv preprints (arXiv reports none) by matching "
+        "the two providers' results for a topic on case-insensitive exact title."
+    ),
+)
+
+SEARCH_EXAMPLES: list[FunctionExample] = [
+    FunctionExample(
+        sql=(
+            "SELECT title, authors, year FROM scholar.main.scholar_search('retrieval augmented generation', count := 5)"
+        ),
+        description="Top 5 OpenAlex results (the default provider) for a topic.",
+    ),
+    FunctionExample(
+        sql=(
+            "SELECT title, doi FROM "
+            "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
+        ),
+        description="Search Crossref instead of the default OpenAlex provider.",
+    ),
+    CROSS_PROVIDER_DOI_EXAMPLE,
+    ARXIV_CITATIONS_EXAMPLE,
+    FunctionExample(
+        sql=(
+            "SELECT title, published FROM "
+            "scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) "
+            "ORDER BY published DESC"
+        ),
+        description="Pull the 20 most recent arXiv preprints on a topic.",
+    ),
+]
+
+
+def examples_json(examples: list[FunctionExample]) -> str:
+    """Encode examples as the described ``vgi.example_queries`` JSON list (VGI515).
+
+    The native ``duckdb_functions()`` examples column drops descriptions, so the
+    tag carries ``[{description, sql}]`` built from the same ``FunctionExample``
+    objects as ``Meta.examples`` -- one definition per example, no copy-paste.
+
+    Args:
+        examples: The examples to encode.
+
+    Returns:
+        The JSON-encoded ``[{description, sql}]`` list.
+    """
+    return json.dumps([{"description": e.description, "sql": e.sql} for e in examples])
+
+
 @dataclass(slots=True, frozen=True)
 class ScholarSearchArgs:
     """Arguments for ``scholar_search`` (a table function — named args allowed)."""
@@ -104,30 +190,7 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
         name = "scholar_search"
         description = "Search academic literature (OpenAlex / arXiv / Crossref) into a unified schema"
         categories = ["search", "scholarly", "research", "rag"]
-        examples = [
-            FunctionExample(
-                sql=(
-                    "SELECT title, authors, year FROM "
-                    "scholar.main.scholar_search('retrieval augmented generation', count := 5)"
-                ),
-                description="Top 5 OpenAlex results (the default provider) for a topic.",
-            ),
-            FunctionExample(
-                sql=(
-                    "SELECT title, doi FROM "
-                    "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
-                ),
-                description="Search Crossref instead of the default OpenAlex provider.",
-            ),
-            FunctionExample(
-                sql=(
-                    "SELECT title, published FROM "
-                    "scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) "
-                    "ORDER BY published DESC"
-                ),
-                description="Pull the 20 most recent arXiv preprints on a topic.",
-            ),
-        ]
+        examples = SEARCH_EXAMPLES
         tags = {
             "vgi.title": "Scholarly Literature Search",
             "vgi.category": "Search",
@@ -197,32 +260,7 @@ class ScholarSearchFunction(TableFunctionGenerator[ScholarSearchArgs, _ScanState
             # Described example carrier (VGI515): the native duckdb_functions()
             # examples column drops descriptions, so mirror the Meta.examples list
             # here as JSON [{description, sql}] so every example keeps its prose.
-            "vgi.example_queries": json.dumps(
-                [
-                    {
-                        "description": "Top 5 OpenAlex results (the default provider) for a topic.",
-                        "sql": (
-                            "SELECT title, authors, year FROM "
-                            "scholar.main.scholar_search('retrieval augmented generation', count := 5)"
-                        ),
-                    },
-                    {
-                        "description": "Search Crossref instead of the default OpenAlex provider.",
-                        "sql": (
-                            "SELECT title, doi FROM "
-                            "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
-                        ),
-                    },
-                    {
-                        "description": "Pull the 20 most recent arXiv preprints on a topic.",
-                        "sql": (
-                            "SELECT title, published FROM "
-                            "scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) "
-                            "ORDER BY published DESC"
-                        ),
-                    },
-                ]
-            ),
+            "vgi.example_queries": examples_json(SEARCH_EXAMPLES),
             # Structured result schema (VGI307/VGI321): JSON [{name,type,description}].
             # Types are real DuckDB types and are matched against the live output
             # under --execute (VGI910). Mirrors UNIFIED_SCHEMA in schema_utils.py.

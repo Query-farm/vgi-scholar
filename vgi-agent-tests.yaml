@@ -15,3 +15,26 @@ tasks:
   - name: search_finds_works
     reference_sql: "SELECT count(*) >= 3 AS found FROM scholar.main.scholar_search('machine learning', count := 5)"
     ignore_column_names: true
+  # Live data: grade with check_sql (no exact-compare reference). The agent saves
+  # its answer in bert_top_shared; the check recomputes the live OpenAlex x
+  # Crossref DOI join and requires the same DOI and a Crossref citation count
+  # within max(10, 1%) of the live value. The top match leads the runner-up by
+  # two orders of magnitude, so it is not a near tie.
+  - name: bert_cross_provider_citations
+    check_sql: >-
+      WITH truth AS (
+        SELECT oa.doi, cr.crossref_citations
+        FROM (SELECT lower(doi) AS doi, citations_count AS openalex_citations
+              FROM scholar.main.scholar_search('BERT pre-training deep bidirectional transformers', count := 25)
+              WHERE doi IS NOT NULL) AS oa
+        JOIN (SELECT lower(doi) AS doi, citations_count AS crossref_citations
+              FROM scholar.main.scholar_search('BERT pre-training deep bidirectional transformers',
+                                               provider := 'crossref', count := 25)
+              WHERE doi IS NOT NULL) AS cr
+        USING (doi)
+        ORDER BY oa.openalex_citations DESC LIMIT 1)
+      SELECT (SELECT count(*) FROM bert_top_shared) = 1
+         AND EXISTS (SELECT 1 FROM bert_top_shared AS a, truth AS t
+                     WHERE lower(a.doi) = t.doi
+                       AND abs(a.crossref_citations - t.crossref_citations)
+                           <= greatest(10, t.crossref_citations // 100)) AS ok

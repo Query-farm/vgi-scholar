@@ -48,6 +48,20 @@ SELECT provider, requires_key, "default" FROM scholar.main.scholar_providers ORD
 
 -- Find the default provider used when scholar_search omits provider.
 SELECT provider FROM scholar.main.scholar_providers WHERE "default";
+
+-- Match OpenAlex and Crossref results for one topic by DOI and compare the
+-- citation count each provider reports for the same work.
+WITH oa AS (
+  SELECT lower(doi) AS doi, title, citations_count AS openalex_citations
+  FROM scholar.main.scholar_search('attention is all you need transformer', count := 25)
+  WHERE doi IS NOT NULL),
+cr AS (
+  SELECT lower(doi) AS doi, citations_count AS crossref_citations
+  FROM scholar.main.scholar_search('attention is all you need transformer', provider := 'crossref', count := 25)
+  WHERE doi IS NOT NULL)
+SELECT oa.doi, oa.title, oa.openalex_citations, cr.crossref_citations
+FROM oa JOIN cr USING (doi)
+ORDER BY oa.openalex_citations DESC, oa.doi;
 ```
 
 Change `@v0.4.0` to move to a newer release.

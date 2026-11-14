@@ -37,6 +37,11 @@ class CrossrefProvider:
             "query": query,
             "rows": max(1, min(count, 100)),
             "cursor": cursor or "*",
+            # Deep paging (`cursor`) silently drops Crossref's relevance ranking
+            # unless the sort is explicit: without these, a cursor request returns
+            # works in index order, unrelated to the query's best matches.
+            "sort": "score",
+            "order": "desc",
         }
         mailto = opts.get("mailto") or http_client.mailto()
         if mailto:

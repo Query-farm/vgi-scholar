@@ -132,6 +132,39 @@ SELECT DISTINCT source FROM scholar.scholar_search('graphs', provider := 'crossr
 crossref
 
 # ============================================================================
+# Composed queries (mirrors the published composed examples): results from two
+# providers join on DOI, and the provider registry LEFT JOINs search hits. The
+# mock gives OpenAlex DOIs only to even-numbered works; Crossref has all five.
+# ============================================================================
+
+query TII
+WITH oa AS (
+  SELECT lower(doi) AS doi, citations_count AS openalex_citations
+  FROM scholar.main.scholar_search('graphs', count := 5) WHERE doi IS NOT NULL),
+cr AS (
+  SELECT lower(doi) AS doi, citations_count AS crossref_citations
+  FROM scholar.main.scholar_search('graphs', provider := 'crossref', count := 5) WHERE doi IS NOT NULL)
+SELECT oa.doi, oa.openalex_citations, cr.crossref_citations
+FROM oa JOIN cr USING (doi) ORDER BY oa.openalex_citations DESC, oa.doi;
+----
+10.1234/work4	400	400
+10.1234/work2	200	200
+10.1234/work0	0	0
+
+query TTIII
+WITH hits AS (
+  SELECT source, doi, abstract FROM scholar.main.scholar_search('graphs', provider := 'openalex', count := 3)
+  UNION ALL
+  SELECT source, doi, abstract FROM scholar.main.scholar_search('graphs', provider := 'crossref', count := 2))
+SELECT p.provider, p."default", count(h.source) AS results, count(h.doi) AS with_doi, count(h.abstract) AS with_abstract
+FROM scholar.main.scholar_providers AS p LEFT JOIN hits AS h ON h.source = p.provider
+GROUP BY p.provider, p."default" ORDER BY p.provider;
+----
+arxiv	false	0	0	0
+crossref	false	2	2	0
+openalex	true	3	2	3
+
+# ============================================================================
 # Discovery + clean error path.
 # ============================================================================
 

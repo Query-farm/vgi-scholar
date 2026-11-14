@@ -40,8 +40,54 @@ import json
 
 from vgi import Worker
 from vgi.catalog import Catalog, ConstraintInfo, Schema, Table, constraint_record
+from vgi.metadata import FunctionExample
 
-from vgi_scholar.tables import TABLE_FUNCTIONS, ScholarProvidersFunction
+from vgi_scholar.tables import (
+    ARXIV_CITATIONS_EXAMPLE,
+    CROSS_PROVIDER_DOI_EXAMPLE,
+    TABLE_FUNCTIONS,
+    ScholarProvidersFunction,
+)
+
+# Composed example driven by the provider registry: search the same topic with
+# every provider and LEFT JOIN the hits back onto scholar_providers, so a
+# provider that returned nothing still shows up (results = 0) and each row
+# carries the registry's default flag. Shared by the table's example list and
+# the schema-level list.
+_PROVIDER_COVERAGE_EXAMPLE = {
+    "description": (
+        "Search one topic with every provider and report, per provider in the registry, how many "
+        "of its top 20 results came back and how many carry a DOI and an abstract."
+    ),
+    "sql": (
+        "WITH hits AS ("
+        "SELECT source, doi, abstract FROM "
+        "scholar.main.scholar_search('retrieval augmented generation', provider := 'openalex', count := 20) "
+        "UNION ALL "
+        "SELECT source, doi, abstract FROM "
+        "scholar.main.scholar_search('retrieval augmented generation', provider := 'arxiv', count := 20) "
+        "UNION ALL "
+        "SELECT source, doi, abstract FROM "
+        "scholar.main.scholar_search('retrieval augmented generation', provider := 'crossref', count := 20)) "
+        'SELECT p.provider, p."default", count(h.source) AS results, '
+        "count(h.doi) AS with_doi, count(h.abstract) AS with_abstract "
+        "FROM scholar.main.scholar_providers AS p LEFT JOIN hits AS h ON h.source = p.provider "
+        'GROUP BY p.provider, p."default" ORDER BY p.provider'
+    ),
+}
+
+
+def _example(e: FunctionExample) -> dict[str, str]:
+    """Render a ``FunctionExample`` as a described ``{description, sql}`` dict.
+
+    Args:
+        e: The example to render.
+
+    Returns:
+        The ``{description, sql}`` entry for a ``vgi.example_queries`` list.
+    """
+    return {"description": e.description, "sql": e.sql}
+
 
 _CATALOG_DESCRIPTION_LLM = (
     "Search scholarly / academic literature from SQL across free, ToS-clean providers "
@@ -162,7 +208,10 @@ _CATALOG_TAGS = {
     # `scholar_search` task instead grades a stable yes/no THRESHOLD predicate
     # (does a common query return at least N works?) that returns a single BOOLEAN
     # — robust against live-provider result variation, which an exact-compare
-    # reference on `scholar_search` rows could never be.
+    # reference on `scholar_search` rows could never be. The cross-provider task
+    # (OpenAlex x Crossref joined on DOI) has the agent save its answer to a temp
+    # table, and its check_sql recomputes the live answer and compares, so a wrong
+    # DOI or citation count fails (citations get a small drift tolerance).
     "vgi.agent_test_tasks": json.dumps(
         [
             {
@@ -188,6 +237,17 @@ _CATALOG_TAGS = {
                 "prompt": (
                     'Search the scholarly literature for the topic "machine learning" and determine '
                     "whether at least three matching works are found. Answer with a single true/false value."
+                ),
+            },
+            {
+                "name": "bert_cross_provider_citations",
+                "prompt": (
+                    'Search OpenAlex and Crossref for "BERT pre-training deep bidirectional transformers" '
+                    "(the top 25 results from each provider), match the works both providers returned by "
+                    "DOI (compare DOIs case-insensitively), and pick the shared work with the highest "
+                    "OpenAlex citation count. Save it as a temporary table named bert_top_shared with "
+                    "exactly one row and two columns: doi (VARCHAR, lower-case) and crossref_citations "
+                    "(INTEGER, the citation count Crossref reports for that work)."
                 ),
             },
         ]
@@ -221,6 +281,9 @@ _SCHEMA_EXAMPLE_QUERIES = json.dumps(
                 "scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)"
             ),
         },
+        _example(CROSS_PROVIDER_DOI_EXAMPLE),
+        _example(ARXIV_CITATIONS_EXAMPLE),
+        _PROVIDER_COVERAGE_EXAMPLE,
     ]
 )
 
@@ -337,6 +400,7 @@ _PROVIDERS_TABLE_TAGS = {
                 "description": "Confirm all providers are keyless (no API key required).",
                 "sql": "SELECT count(*) AS keyless FROM scholar.main.scholar_providers WHERE NOT requires_key",
             },
+            _PROVIDER_COVERAGE_EXAMPLE,
         ]
     ),
 }
