@@ -9,17 +9,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-from IPython.display import Markdown, display
-
 ENVIRONMENT = tuple(f"VGI_SCHOLAR_{p}_BASE_URL" for p in ("OPENALEX", "CROSSREF", "ARXIV"))
 QUERY = "attention is all you need transformer"
 ROUTES = {
     "/openalex/works": ("openalex", {"search": [QUERY], "per_page": ["50"], "cursor": ["*"]}),
     "/crossref/works": (
         "crossref",
-        {"query": [QUERY], "rows": ["50"], "cursor": ["*"], "sort": ["score"], "order": ["desc"]},
+        {"query": [QUERY], "rows": ["50"], "cursor": ["*"]},
     ),
 }
 
@@ -32,9 +28,9 @@ class ReplayHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         params.pop("mailto", None)
-        self.server.requests.append(parsed.path)
         route = ROUTES.get(parsed.path)
         valid = route is not None and params == route[1]
+        self.server.requests.append({"path": parsed.path, "parameters": params, "matched": valid})
         body = self.server.documents[route[0]] if valid else b'{"error":"unrecorded request"}'
         self.send_response(200 if valid else 404)
         self.send_header("Content-Type", "application/json")
@@ -70,7 +66,9 @@ def configure(mode, year):
 
 def audit(server):
     if server is not None:
-        if sorted(server.requests) != sorted(ROUTES):
+        if sorted(r["path"] for r in server.requests) != sorted(ROUTES) or not all(
+            r["matched"] for r in server.requests
+        ):
             raise AssertionError(f"Expected exactly two recorded requests: {server.requests}")
         return (
             "Replay audit: exactly one request to each recorded provider; query and page parameters matched."
@@ -88,31 +86,3 @@ def cleanup(server, thread, previous):
             os.environ.pop(key, None)
         else:
             os.environ[key] = value
-
-
-def prose(text: str) -> None:
-    display(Markdown(text))
-
-
-def theme() -> None:
-    sns.set_theme(
-        style="whitegrid",
-        rc={
-            "figure.dpi": 145,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "grid.color": "#E8EDE9",
-            "text.color": "#243B2F",
-            "axes.labelcolor": "#405047",
-            "text.parse_math": False,
-            "legend.frameon": False,
-        },
-    )
-
-
-def chart(fig, title: str, subtitle: str, source: str) -> None:
-    fig.text(0.08, 0.98, title, ha="left", va="top", fontsize=17, fontweight="semibold")
-    fig.text(0.08, 0.90, subtitle, ha="left", va="top", fontsize=10, color="#58685F")
-    fig.tight_layout(rect=(0.02, 0.11, 1, 0.82))
-    fig.text(0.08, 0.03, source, fontsize=8, color="#6C7D73")
-    plt.show()
