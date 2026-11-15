@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "repository": "Query-farm/vgi-scholar",
+  "revision": "02467a46e0687fa0ccc5291a0ed5be62afa12ad7",
+  "captured_at": "2026-11-15T00:24:56.604974+00:00",
+  "default_schema": "main",
+  "scope": "all_public_functions_and_tables",
+  "complete": true,
+  "evidence": [
+    {
+      "path": "coverage/released-functions.json",
+      "sha256": "e4a8fa9b707a39be831b74f90ef6e58bac10e80f2a1648300909d9f4284bae31",
+      "description": "Complete worker-filtered functions export through actual published Haybarn"
+    },
+    {
+      "path": "coverage/released-tables.json",
+      "sha256": "1128a59edef0cc691e5768b1460a2e8b9747337cce1a574ee9684f06b3332208",
+      "description": "Complete worker-filtered tables export through actual published Haybarn"
+    },
+    {
+      "path": "coverage/released-views.json",
+      "sha256": "7b43e48d23121e071cc5f774757a5e294905760f701279df06f2f6cedddf5ded",
+      "description": "Complete worker-filtered views export through actual published Haybarn"
+    }
+  ],
+  "objects": [
+    {
+      "schema": "main",
+      "name": "scholar_providers",
+      "kind": "function",
+      "signatures": [
+        "scholar_providers()"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "scholar_search",
+      "kind": "function",
+      "signatures": [
+        "scholar_search(VARCHAR, VARCHAR, BIGINT, BIGINT)"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "scholar_providers",
+      "kind": "table",
+      "signatures": [
+        "TABLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    }
+  ]
+}

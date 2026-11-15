@@ -1,0 +1,51 @@
+{
+  "query": "SELECT * FROM duckdb_tables() WHERE database_name='scholar' ORDER BY schema_name,table_name",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "schema_oid",
+    "table_name",
+    "table_oid",
+    "comment",
+    "tags",
+    "internal",
+    "temporary",
+    "has_primary_key",
+    "estimated_size",
+    "column_count",
+    "index_count",
+    "check_constraint_count",
+    "sql"
+  ],
+  "rows": [
+    [
+      "scholar",
+      22592,
+      "main",
+      22593,
+      "scholar_providers",
+      22728,
+      "One row per scholarly-search provider scholar_search can target (provider name, keyless flag, default flag)",
+      {
+        "category": "search",
+        "domain": "research",
+        "topic": "scholarly-literature",
+        "vgi.category": "Providers",
+        "vgi.doc_llm": "## scholar_providers (table)\n\nThe fixed set of scholarly-search providers that `scholar_search` can target, one row per provider. This is the table form of the `scholar_providers()` function: because it takes no arguments and always returns the same rows, you can read it as a plain table \u2014 `scholar.main.scholar_providers`, no parentheses \u2014 rather than calling it as a function. Use it to discover the valid values for `scholar_search`'s `provider :=` argument, to find the default provider, or to confirm a provider is keyless before running a search.\n\nColumns: `provider` (the name to pass as `provider := '...'`; unique per row and the table's primary key), `requires_key` (true if the provider needs an API key \u2014 all current providers are keyless, so false), and `default` (true for the single provider used when `scholar_search` omits `provider`). Reading this table makes no network calls.",
+        "vgi.doc_md": "# scholar_providers (table)\n\nEvery scholarly-search provider available to `scholar_search`, one row each. This is the table form of the parameterless `scholar_providers()` function.\n\nRead it with no parentheses, e.g. `scholar.main.scholar_providers`, to enumerate the valid `provider :=` values, filter on the `\"default\"` flag to see which provider is used when a search omits `provider`, or count the `requires_key` column to confirm a provider is keyless. Runnable examples are attached as this table's example queries.\n\n## Columns\n\n- `provider` (`VARCHAR`, primary key) \u2014 name to pass as `provider := '...'`.\n- `requires_key` (`BOOLEAN`) \u2014 whether the provider needs an API key (all v1 providers are keyless).\n- `default` (`BOOLEAN`) \u2014 whether this is the default provider; exactly one row is true.\n\n## Notes\n\nReading this table needs no network access, so it is a reliable capability/health probe.",
+        "vgi.example_queries": "[{\"description\": \"List each provider with its keyless and default flags, alphabetically.\", \"sql\": \"SELECT provider, requires_key, \\\"default\\\" FROM scholar.main.scholar_providers ORDER BY provider\"}, {\"description\": \"Find the default provider used when scholar_search omits provider.\", \"sql\": \"SELECT provider FROM scholar.main.scholar_providers WHERE \\\"default\\\"\"}, {\"description\": \"Confirm all providers are keyless (no API key required).\", \"sql\": \"SELECT count(*) AS keyless FROM scholar.main.scholar_providers WHERE NOT requires_key\"}]",
+        "vgi.keywords": "[\"providers\", \"list providers\", \"scholarly providers\", \"openalex\", \"arxiv\", \"crossref\", \"default provider\", \"capability\", \"discovery\", \"requires key\"]",
+        "vgi.title": "Scholarly Providers"
+      },
+      false,
+      false,
+      true,
+      0,
+      3,
+      1,
+      0,
+      "CREATE TABLE scholar_providers(provider VARCHAR, requires_key BOOLEAN NOT NULL, \"default\" BOOLEAN NOT NULL, PRIMARY KEY(provider));"
+    ]
+  ]
+}

@@ -1,6 +1,5 @@
 line-length = 110
-target-version = "py313"
+exclude = [".venv", "validation", "artifacts", ".vgi-examples"]
 [lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
-[lint.per-file-ignores]
-"*.ipynb" = ["E402", "F821"]
+select = ["E", "F"]
+ignore = ["E501", "F821"]

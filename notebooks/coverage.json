@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "catalogs": {
+    "released": {
+      "path": "coverage/catalog-released.json",
+      "sha256": "6d125d0c22d129bc4483abb98b53f780270aac37c37b1c614a061a41b47a9df6",
+      "review": {
+        "status": "approved",
+        "reviewer": "/root/notebooks_sympy",
+        "reviewed_at": "2026-11-15T00:40:06.190018+00:00",
+        "catalog_sha256": "6d125d0c22d129bc4483abb98b53f780270aac37c37b1c614a061a41b47a9df6",
+        "notes": "Actual complete functions/tables/views exports reconcile to two logical names; scholar_providers table alias merges with its function. Both are keyless read surfaces. Notebook executes this release. Crossref request omits explicit sort; real recording matches exactly."
+      }
+    },
+    "current": {
+      "path": "coverage/catalog-current.json",
+      "sha256": "a0626a35daf31e8c3852e35a7d9eeacd51936260a83c963400ec1aceabf5d0d9",
+      "review": {
+        "status": "approved",
+        "reviewer": "/root/notebooks_sympy",
+        "reviewed_at": "2026-11-15T00:40:06.190018+00:00",
+        "catalog_sha256": "a0626a35daf31e8c3852e35a7d9eeacd51936260a83c963400ec1aceabf5d0d9",
+        "notes": "Actual complete functions/tables/views exports reconcile to two logical names; scholar_providers table alias merges with its function. Both are keyless read surfaces. Actual current remote SHA catalog was collected; analytical execution remains released. Current Crossref adds explicit score sorting, so schema correspondence does not imply retrieval equivalence."
+      }
+    }
+  },
+  "notebooks": [
+    {
+      "path": "01_compare_scholarly_search_coverage.ipynb",
+      "sha256": "71558a9b3a490579d97599f7880c95b1b3ed905b81b142ad6aea93f8bc68cfea",
+      "execution": {
+        "path": "coverage/run-01.json",
+        "sha256": "a7ec7592bdfc1602a88a6c9a7f70f371a16719d9dc9d4894fb4013f10bf7b871"
+      }
+    }
+  ],
+  "examples": [
+    {
+      "object": {
+        "schema": "main",
+        "name": "scholar_providers"
+      },
+      "notebook": "01_compare_scholarly_search_coverage.ipynb",
+      "sql": [
+        {
+          "cell": "78920ede",
+          "reference": "scholar.main.scholar_providers"
+        }
+      ],
+      "narrative_cells": [
+        "5551b69f"
+      ],
+      "result_cells": [
+        "78920ede"
+      ],
+      "interpretation_cells": [
+        "ceea752b"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "/root/notebooks_sympy",
+        "reviewed_at": "2026-11-15T00:40:06.190018+00:00",
+        "notebook_sha256": "71558a9b3a490579d97599f7880c95b1b3ed905b81b142ad6aea93f8bc68cfea",
+        "catalog_sha256": [
+          "6d125d0c22d129bc4483abb98b53f780270aac37c37b1c614a061a41b47a9df6",
+          "a0626a35daf31e8c3852e35a7d9eeacd51936260a83c963400ec1aceabf5d0d9"
+        ],
+        "purpose": "Audit the comparability of bounded scholarly search samples before interpreting DOI overlap.",
+        "finding": "Returned default/keyless flags select OpenAlex plus Crossref and feed actual provider arguments through visible selected_providers SQL. arXiv remains an unselected alternative. Metadata drives a concrete input choice rather than a catalog dump."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "scholar_search"
+      },
+      "notebook": "01_compare_scholarly_search_coverage.ipynb",
+      "sql": [
+        {
+          "cell": "97807b75",
+          "reference": "scholar.main.scholar_search"
+        }
+      ],
+      "narrative_cells": [
+        "496eb125"
+      ],
+      "result_cells": [
+        "97807b75"
+      ],
+      "interpretation_cells": [
+        "8a9a2d1b"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "/root/notebooks_sympy",
+        "reviewed_at": "2026-11-15T00:40:06.190018+00:00",
+        "notebook_sha256": "71558a9b3a490579d97599f7880c95b1b3ed905b81b142ad6aea93f8bc68cfea",
+        "catalog_sha256": [
+          "6d125d0c22d129bc4483abb98b53f780270aac37c37b1c614a061a41b47a9df6",
+          "a0626a35daf31e8c3852e35a7d9eeacd51936260a83c963400ec1aceabf5d0d9"
+        ],
+        "purpose": "Audit the comparability of bounded scholarly search samples before interpreting DOI overlap.",
+        "finding": "Released worker parses two real recorded 50-row responses, exact request parameters audited. Full year distribution exposes incomparability before DOI matching; default39 and experiment31 OpenAlex rows, zero Crossref, missing DOI separate. Zero shared keys stop paired citation comparison; no fake overlap or current sorting claimed."
+      }
+    }
+  ]
+}

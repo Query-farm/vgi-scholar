@@ -1,0 +1,119 @@
+{
+  "query": "SELECT * FROM duckdb_functions() WHERE database_name='scholar' ORDER BY schema_name,function_name",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "function_name",
+    "alias_of",
+    "function_type",
+    "description",
+    "comment",
+    "tags",
+    "return_type",
+    "parameters",
+    "parameter_types",
+    "varargs",
+    "macro_definition",
+    "has_side_effects",
+    "internal",
+    "extension_name",
+    "function_oid",
+    "examples",
+    "stability",
+    "categories"
+  ],
+  "rows": [
+    [
+      "scholar",
+      "22592",
+      "main",
+      "scholar_providers",
+      null,
+      "table",
+      "List the available scholarly-search providers",
+      null,
+      {
+        "vgi.category": "Providers",
+        "vgi.doc_llm": "## scholar_providers\n\nEnumerate the scholarly-search providers that `scholar_search` can target, one per row. Use this to discover the valid values for `scholar_search`'s `provider :=` argument, to find the default provider, or to confirm a provider is keyless before running a search.\n\n### Inputs\nTakes no arguments.\n\n### Output\nOne row per registered provider with `provider` (the name to pass as `provider := '...'`), `requires_key` (`BOOLEAN` \u2014 all current providers are keyless, so `false`), and `default` (`BOOLEAN` \u2014 true for the provider used when `scholar_search` omits `provider`).\n\n### Behavior & edge cases\n- Pure metadata: it makes **no** network calls and works without any external API, so it is always safe to run as a capability/discovery probe.\n- The set of providers is fixed at worker build time; the row order is the registration order.",
+        "vgi.doc_md": "# scholar_providers\n\nList every scholarly-search provider available to `scholar_search`, one row each.\n\n## Usage\n\nCall it with no arguments to enumerate the providers, then filter on the `\"default\"` flag to see which one a search uses when `provider` is omitted, or on `requires_key` to confirm a provider is keyless. Runnable queries are attached as this function's example queries.\n\n## Notes\n\n- Returns metadata only \u2014 no network access is needed, so this is a reliable health/capability check for the worker.\n- All current providers are keyless (`requires_key = false`).\n- Exactly one row has `default = true`.",
+        "vgi.example_queries": "[{\"description\": \"List every provider scholar_search can use, with its keyless and default flags.\", \"sql\": \"SELECT provider, requires_key, \\\"default\\\" FROM scholar.main.scholar_providers() ORDER BY provider\"}, {\"description\": \"Find the default provider used when scholar_search omits provider.\", \"sql\": \"SELECT provider FROM scholar.main.scholar_providers() WHERE \\\"default\\\"\"}]",
+        "vgi.executable_examples": "[{\"description\": \"List each provider with its keyless and default flags, alphabetically.\", \"sql\": \"SELECT provider, requires_key, \\\"default\\\" FROM scholar.main.scholar_providers() ORDER BY provider\"}, {\"description\": \"Find the default provider used when scholar_search omits provider.\", \"sql\": \"SELECT provider FROM scholar.main.scholar_providers() WHERE \\\"default\\\"\"}, {\"description\": \"Confirm all providers are keyless (no API key required).\", \"sql\": \"SELECT count(*) AS keyless FROM scholar.main.scholar_providers() WHERE NOT requires_key\"}]",
+        "vgi.keywords": "[\"providers\", \"list providers\", \"scholarly providers\", \"openalex\", \"arxiv\", \"crossref\", \"default provider\", \"capability\", \"discovery\", \"requires key\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"provider\", \"type\": \"VARCHAR\", \"description\": \"Provider name to pass as provider := '...'.\"}, {\"name\": \"requires_key\", \"type\": \"BOOLEAN\", \"description\": \"Whether the provider needs an API key (all v1 providers are keyless).\"}, {\"name\": \"default\", \"type\": \"BOOLEAN\", \"description\": \"Whether this is the default provider.\"}]",
+        "vgi.title": "List Scholarly Providers"
+      },
+      null,
+      [],
+      [],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22596,
+      [
+        "SELECT provider, requires_key, \"default\" FROM scholar.main.scholar_providers() ORDER BY provider",
+        "SELECT provider FROM scholar.main.scholar_providers() WHERE \"default\""
+      ],
+      null,
+      [
+        "search",
+        "scholarly",
+        "metadata"
+      ]
+    ],
+    [
+      "scholar",
+      "22592",
+      "main",
+      "scholar_search",
+      null,
+      "table",
+      "Search academic literature (OpenAlex / arXiv / Crossref) into a unified schema",
+      null,
+      {
+        "vgi.category": "Search",
+        "vgi.doc_llm": "## scholar_search\n\nSearch scholarly / academic literature and stream up to `count` matching works as rows in a single **unified schema**, regardless of which provider answered. Use this whenever an agent needs to find papers by topic, resolve DOIs, gather citation counts, assemble a literature review, or build a corpus for retrieval-augmented generation (RAG).\n\n### Inputs\n- `query` (positional, `VARCHAR`) \u2014 free-text search string, e.g. `'retrieval augmented generation'`.\n- `provider :=` (`VARCHAR`, default `'openalex'`) \u2014 one of `'openalex'`, `'arxiv'`, `'crossref'`. Call `scholar_providers()` to enumerate the valid values.\n- `count :=` (`INTEGER`, default 10, 1\u20131000) \u2014 maximum rows to return; the function pages the provider until this budget is met or results are exhausted.\n- `page_size :=` (`INTEGER`, default 0, 0\u2013200) \u2014 rows fetched per provider request; 0 picks an automatic page size.\n\n### Output\nOne row per work in the unified schema (`title`, `authors`, `abstract`, `doi`, `year`, `published`, `venue`, `citations_count`, `url`, `source`, `extra`). `authors` is a `LIST<VARCHAR>`, `published` is a UTC `TIMESTAMPTZ`, and `extra` is provider-specific JSON.\n\n### Behavior & edge cases\n- No API key is required for any provider; set `VGI_SCHOLAR_MAILTO` to join the OpenAlex / Crossref polite pool.\n- An unknown `provider` is rejected at bind time with a clean DuckDB error.\n- Provider/network failures surface as a DuckDB error rather than crashing the worker.\n- Fields a provider does not supply (e.g. missing `doi` or `abstract`) come back as NULL.\n- Requires outbound network access to the provider's public API to return rows.",
+        "vgi.doc_md": "# scholar_search\n\nSearch scholarly literature across **OpenAlex** (default), **arXiv**, and **Crossref**, returning matches in one normalized schema so SQL never has to branch on the provider.\n\n## Usage\n\nCall it as a table function, passing the free-text query positionally and refining with the named arguments: `provider :=` to pick a source, `count :=` to cap the rows, and `page_size :=` to tune paging. Project the unified columns you need (`title`, `authors`, `year`, `published`, `doi`, `citations_count`, \u2026) and order or filter as usual. Ready-to-run queries are attached as this function's example queries.\n\n## Notes\n\n- `provider` accepts `openalex`, `arxiv`, or `crossref`; `scholar_providers()` lists them.\n- `count` (1\u20131000) caps the rows returned; the function pages the provider transparently.\n- No API key is needed. Set `VGI_SCHOLAR_MAILTO` for the polite pool.\n- Network access to the provider API is required; provider errors become DuckDB errors.\n- Every row uses the unified result schema: `title`, `authors` (`VARCHAR[]`), `abstract`, `doi`, `year`, `published` (`TIMESTAMPTZ`), `venue`, `citations_count`, `url`, `source`, and a JSON `extra` column.",
+        "vgi.example_queries": "[{\"description\": \"Top 5 OpenAlex results (the default provider) for a topic.\", \"sql\": \"SELECT title, authors, year FROM scholar.main.scholar_search('retrieval augmented generation', count := 5)\"}, {\"description\": \"Search Crossref instead of the default OpenAlex provider.\", \"sql\": \"SELECT title, doi FROM scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)\"}, {\"description\": \"Match the top 25 OpenAlex and top 25 Crossref results for one topic by DOI and compare the citation count each provider reports for the same work.\", \"sql\": \"WITH oa AS (SELECT lower(doi) AS doi, title, citations_count AS openalex_citations FROM scholar.main.scholar_search('attention is all you need transformer', count := 25) WHERE doi IS NOT NULL), cr AS (SELECT lower(doi) AS doi, citations_count AS crossref_citations FROM scholar.main.scholar_search('attention is all you need transformer', provider := 'crossref', count := 25) WHERE doi IS NOT NULL) SELECT oa.doi, oa.title, oa.openalex_citations, cr.crossref_citations FROM oa JOIN cr USING (doi) ORDER BY oa.openalex_citations DESC, oa.doi\"}, {\"description\": \"Attach OpenAlex citation counts to arXiv preprints (arXiv reports none) by matching the two providers' results for a topic on case-insensitive exact title.\", \"sql\": \"WITH preprints AS (SELECT title, year FROM scholar.main.scholar_search('masked autoencoders vision transformers', provider := 'arxiv', count := 25)), indexed AS (SELECT title, citations_count FROM scholar.main.scholar_search('masked autoencoders vision transformers', count := 25)) SELECT p.title, p.year, max(i.citations_count) AS openalex_citations FROM preprints AS p JOIN indexed AS i ON lower(trim(p.title)) = lower(trim(i.title)) GROUP BY p.title, p.year ORDER BY openalex_citations DESC, p.title\"}, {\"description\": \"Pull the 20 most recent arXiv preprints on a topic.\", \"sql\": \"SELECT title, published FROM scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) ORDER BY published DESC\"}]",
+        "vgi.keywords": "[\"scholarly search\", \"academic literature\", \"papers\", \"publications\", \"openalex\", \"arxiv\", \"crossref\", \"doi\", \"citations\", \"preprints\", \"literature review\", \"rag\", \"retrieval\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"title\", \"type\": \"VARCHAR\", \"description\": \"Work title.\"}, {\"name\": \"authors\", \"type\": \"VARCHAR[]\", \"description\": \"Author display names, in listed order.\"}, {\"name\": \"abstract\", \"type\": \"VARCHAR\", \"description\": \"Abstract / summary text, when the provider exposes one.\"}, {\"name\": \"doi\", \"type\": \"VARCHAR\", \"description\": \"Digital Object Identifier (bare, e.g. 10.1234/abc), when known.\"}, {\"name\": \"year\", \"type\": \"INTEGER\", \"description\": \"Publication year.\"}, {\"name\": \"published\", \"type\": \"TIMESTAMP WITH TIME ZONE\", \"description\": \"Publication date as a UTC timestamp, when known.\"}, {\"name\": \"venue\", \"type\": \"VARCHAR\", \"description\": \"Journal / conference / repository name.\"}, {\"name\": \"citations_count\", \"type\": \"INTEGER\", \"description\": \"Number of citations the provider reports, when available.\"}, {\"name\": \"url\", \"type\": \"VARCHAR\", \"description\": \"A landing-page / record URL for the work.\"}, {\"name\": \"source\", \"type\": \"VARCHAR\", \"description\": \"The provider that produced this row (e.g. openalex).\"}, {\"name\": \"extra\", \"type\": \"VARCHAR\", \"description\": \"Provider-specific fields not in the unified schema, as a JSON-encoded string.\"}]",
+        "vgi.title": "Scholarly Literature Search"
+      },
+      null,
+      [
+        "query",
+        "provider",
+        "page_size",
+        "count"
+      ],
+      [
+        "VARCHAR",
+        "VARCHAR",
+        "BIGINT",
+        "BIGINT"
+      ],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22597,
+      [
+        "SELECT title, authors, year FROM scholar.main.scholar_search('retrieval augmented generation', count := 5)",
+        "SELECT title, doi FROM scholar.main.scholar_search('graph neural networks', provider := 'crossref', count := 10)",
+        "WITH oa AS (SELECT lower(doi) AS doi, title, citations_count AS openalex_citations FROM scholar.main.scholar_search('attention is all you need transformer', count := 25) WHERE doi IS NOT NULL), cr AS (SELECT lower(doi) AS doi, citations_count AS crossref_citations FROM scholar.main.scholar_search('attention is all you need transformer', provider := 'crossref', count := 25) WHERE doi IS NOT NULL) SELECT oa.doi, oa.title, oa.openalex_citations, cr.crossref_citations FROM oa JOIN cr USING (doi) ORDER BY oa.openalex_citations DESC, oa.doi",
+        "WITH preprints AS (SELECT title, year FROM scholar.main.scholar_search('masked autoencoders vision transformers', provider := 'arxiv', count := 25)), indexed AS (SELECT title, citations_count FROM scholar.main.scholar_search('masked autoencoders vision transformers', count := 25)) SELECT p.title, p.year, max(i.citations_count) AS openalex_citations FROM preprints AS p JOIN indexed AS i ON lower(trim(p.title)) = lower(trim(i.title)) GROUP BY p.title, p.year ORDER BY openalex_citations DESC, p.title",
+        "SELECT title, published FROM scholar.main.scholar_search('large language models', provider := 'arxiv', count := 20) ORDER BY published DESC"
+      ],
+      null,
+      [
+        "search",
+        "scholarly",
+        "research",
+        "rag"
+      ]
+    ]
+  ]
+}
