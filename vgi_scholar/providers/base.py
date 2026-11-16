@@ -72,7 +72,7 @@ def parse_year(value: Any) -> int | None:
         return None
     try:
         year = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return year if 1 <= year <= 3000 else None
 
@@ -115,7 +115,7 @@ def date_parts_to_datetime(parts: list[Any] | None) -> datetime | None:
         month = int(parts[1]) if len(parts) > 1 else 1
         day = int(parts[2]) if len(parts) > 2 else 1
         return datetime(year, month, day, tzinfo=UTC)
-    except (TypeError, ValueError, IndexError):
+    except TypeError, ValueError, IndexError:
         return None
 
 

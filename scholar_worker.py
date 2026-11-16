@@ -1,10 +1,10 @@
 # /// script
-# requires-python = ">=3.13"
+# requires-python = ">=3.14"
 # dependencies = [
 #     # 0.46.x speaks VGI protocol 2.x, which the signed vgi community extension
 #     # requires; keep at >=0.46.1 (older releases speak protocol 1.x and ATTACH
 #     # fails with a protocol_version mismatch).
-#     "vgi-python[http]>=0.52.0",
+#     "vgi-python[http]>=0.52.2,<0.53",
 #     "httpx>=0.27",
 # ]
 # ///

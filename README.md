@@ -174,7 +174,7 @@ These fit the same provider surface and are planned for a future version:
 ## Local development
 
 ```sh
-uv venv --python 3.13
+uv venv --python 3.14
 uv pip install -e ../vgi-python httpx pyarrow pytest ruff mypy
 uv pip install -e . --no-deps
 

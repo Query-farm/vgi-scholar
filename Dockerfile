@@ -6,7 +6,7 @@
 # See docker-entrypoint.sh. All providers (OpenAlex / arXiv / Crossref) are keyless;
 # set VGI_SCHOLAR_MAILTO to a contact e-mail to join the OpenAlex/Crossref polite pool.
 # syntax=docker/dockerfile:1
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ARG VERSION=0.0.0
 ARG GIT_COMMIT=unknown
