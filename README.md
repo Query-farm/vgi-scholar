@@ -199,7 +199,8 @@ make typecheck       # mypy
 - **haybarn SQL E2E** (`test/sql/scholar_search.test`) — the real worker
   subprocess under DuckDB via
   [`haybarn-unittest`](https://pypi.org/project/haybarn-unittest/), with its
-  providers redirected at the mock server (`scripts/run_sql_e2e.py`).
+  providers redirected at the mock server (`ci/run-integration.sh`, over stdio,
+  launch and http).
 - **Optional live smoke** (`tests/test_live_smoke.py`, gated by
   `VGI_SCHOLAR_LIVE=1`) — one real OpenAlex query (free, no key). Not in the CI
   gate.
@@ -230,7 +231,7 @@ tests/
   test_live_smoke.py     optional gated live OpenAlex smoke
 test/sql/
   scholar_search.test    DuckDB sqllogictest E2E against the mock server
-scripts/run_sql_e2e.py   starts the mock server, exports its URL, runs the haybarn glob
+ci/run-integration.sh    starts the mock server, exports its URL, runs the haybarn suite
 ```
 
 ## Licensing

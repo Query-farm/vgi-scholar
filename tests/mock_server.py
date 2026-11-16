@@ -8,7 +8,7 @@ until a fixed total is reached, then a final empty / cursor-less page.
 Used two ways:
 
 * in-process by ``test_mock_e2e.py`` (start, point providers at it, assert);
-* as a subprocess by ``scripts/run_sql_e2e.py``, which exports the server URL
+* as a subprocess by ``ci/run-integration.sh``, which exports the server URL
   into the ``VGI_SCHOLAR_*_BASE_URL`` env vars the worker reads, so the haybarn
   SQL suite drives the real worker against canned data — no live API in CI.
 

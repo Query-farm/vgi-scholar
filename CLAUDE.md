@@ -40,7 +40,7 @@ single unified schema.
 2. Register it in `vgi_scholar/providers/__init__.py` `_FACTORIES`.
 3. Add a fixture (`tests/fixtures/<name>.*`) + a parser test in
    `tests/test_providers.py`, and add the name to `PROVIDERS` in
-   `tests/test_mock_e2e.py` and `scripts/run_sql_e2e.py`; teach `tests/mock_server.py`
+   `tests/test_mock_e2e.py` and `ci/run-integration.sh`; teach `tests/mock_server.py`
    to serve its shape.
 
 ## Testing (NO live external API in the CI gate)
@@ -48,9 +48,9 @@ single unified schema.
 - `make test-unit` / `pytest` — fixture parser tests (`test_providers.py`) +
   mock-server E2E (`test_mock_e2e.py`). The mock (`tests/mock_server.py`) serves
   canned, *paged* responses in-process.
-- `make test-sql` — the real worker subprocess under DuckDB via
-  `haybarn-unittest`, with providers redirected at the mock server by
-  `scripts/run_sql_e2e.py`. The `.test` file uses `LOAD vgi;` (NEVER `require
+- `make test-sql` — the real worker under DuckDB via `haybarn-unittest` over
+  stdio, launch and http, with providers redirected at the mock server by
+  `ci/run-integration.sh`. The `.test` file uses `LOAD vgi;` (NEVER `require
   vgi`), `require-env VGI_SCHOLAR_WORKER`, and ATTACHes `${VGI_SCHOLAR_WORKER}`.
 - `make lint` (ruff) and `make typecheck` (mypy `vgi_scholar`) must be clean.
 - Live smoke (`tests/test_live_smoke.py`) is GATED by `VGI_SCHOLAR_LIVE=1` and is

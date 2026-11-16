@@ -25,6 +25,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # The SQL test runner, pinned; its haybarn 2.0 community `vgi` extension speaks
+  # the worker's VGI protocol (vgi.v3).
+  HAYBARN_VERSION: "2.0.0rc11"
+
 jobs:
   test:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -102,92 +107,37 @@ jobs:
           location: ".venv/bin/python scholar_worker.py"
           fail-on: info
 
-  # Resolve the newest haybarn 2.0 release once, so the whole matrix tests the
-  # same version. The worker speaks VGI protocol vgi.v3 (3.2), which only the
-  # haybarn 2.0 community `vgi` extension accepts. haybarn 2.0 is RC-only, so
-  # `gh release view` (no tag) still returns the 1.5 line: pick the newest
-  # haybarn-v2.0.* tag instead.
-  resolve-haybarn:
-    name: Resolve haybarn release
-    runs-on: ubuntu-latest
-    outputs:
-      release: ${{ steps.r.outputs.release }}
-    steps:
-      - id: r
-        run: |
-          REL=$(gh release list --repo Query-farm-haybarn/haybarn --limit 30 --json tagName \
-            --jq '[.[].tagName | select(startswith("haybarn-v2.0"))][0]')
-          if [ -z "$REL" ] || [ "$REL" = "null" ]; then
-            echo "::error::no haybarn-v2.0.* release found" >&2
-            exit 1
-          fi
-          echo "release=$REL" >> "$GITHUB_OUTPUT"
-          echo "Latest haybarn 2.0 release: $REL"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
+  # test/sql/*.test through DuckDB (the haybarn-unittest runner + the signed
+  # community `vgi` extension) over every transport, via ci/run-integration.sh —
+  # the same script `make test-sql` runs.
   integration:
     name: SQL E2E (${{ matrix.transport }}) on ${{ matrix.os }}
-    needs: resolve-haybarn
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        # Run the SAME sqllogictest suite over every VGI transport. The vgi
-        # extension picks the transport from the ATTACH LOCATION string that
-        # run-integration.sh builds per $TRANSPORT. The in-process mock provider
-        # server (tests/mock_server.py) is started out of band and stays up for
-        # all three — the worker reads its exported VGI_SCHOLAR_*_BASE_URL vars
-        # however DuckDB reaches the worker:
-        #   subprocess : `.venv/bin/python scholar_worker.py` (stdio)
-        #   http       : `http://127.0.0.1:<port>`   (worker booted with --http)
-        #   unix       : `unix:///tmp/scholar-<pid>.sock` (worker booted --unix)
         os: [ubuntu-latest]
-        transport: [subprocess, http, unix]
-        include:
-          - { os: ubuntu-latest, asset: haybarn_unittest-linux-amd64.zip }
-    runs-on: ${{ matrix.os }}
+        # launch: DuckDB starts the worker once on an AF_UNIX socket and pools it.
+        transport: [stdio, launch, http]
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
-
-      - name: Set up Python 3.14
-        run: uv python install 3.14
-
-      - name: Install the worker (from the lockfile, with the http extra)
-        # The `http` extra pulls in waitress so the worker can serve `--http`.
-        # Harmless for the subprocess/unix legs; required for the http leg.
-        run: uv sync --frozen --python 3.14 --extra http
-
-      - name: Download haybarn-unittest
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.14"
+      - name: Build the worker
+        run: uv sync --locked --all-extras
+      - name: Install the SQL test runner
         run: |
-          gh release download "$HAYBARN_RELEASE" \
-            --repo Query-farm-haybarn/haybarn \
-            --pattern '${{ matrix.asset }}' \
-            --output haybarn-unittest.zip --clobber
-          mkdir -p hb && unzip -o -q haybarn-unittest.zip -d hb
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HAYBARN_RELEASE: ${{ needs.resolve-haybarn.outputs.release }}
-
-      - name: Resolve runner + worker paths
+          uv venv .tools
+          uv pip install -p .tools "haybarn-unittest==${HAYBARN_VERSION}"
+      - name: Run test/sql over ${{ matrix.transport }}
         run: |
-          # Absolute paths: run-integration.sh cd's into a staging dir before
-          # invoking the runner, so relative paths would not resolve. The worker
-          # runs from the synced .venv (deps resolved from PyPI via the lockfile);
-          # plain `.venv/bin/python` ignores the PEP 723 header. run-integration.sh
-          # starts the mock provider server and redirects the providers at it, and
-          # boots the worker itself for the http/unix legs.
-          UNITTEST="$PWD/$(find hb -name 'haybarn-unittest' -type f | head -1)"
-          chmod +x "$UNITTEST"
-          echo "HAYBARN_UNITTEST=$UNITTEST" >> "$GITHUB_ENV"
-          echo "WORKER_CMD=$PWD/.venv/bin/python $PWD/scholar_worker.py" >> "$GITHUB_ENV"
-
-      - name: Run extension integration suite (${{ matrix.transport }})
-        run: ci/run-integration.sh
-        env:
-          TRANSPORT: ${{ matrix.transport }}
+          # ci/run-integration.sh starts the mock provider server (tests/mock_server.py)
+          # for every transport, so nothing here reaches a live API.
+          export WORKER="$PWD/.venv/bin/vgi-scholar-worker"
+          export HAYBARN_UNITTEST="$PWD/.tools/bin/haybarn-unittest"
+          TRANSPORT=${{ matrix.transport }} ci/run-integration.sh

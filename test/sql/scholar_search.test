@@ -2,7 +2,7 @@
 # description: scholar_search E2E against the local mock provider server
 # group: [vgi_scholar]
 #
-# Driven by scripts/run_sql_e2e.py, which starts a canned-response HTTP server
+# Driven by ci/run-integration.sh, which starts a canned-response HTTP server
 # and points every provider at it via VGI_SCHOLAR_<PROVIDER>_BASE_URL. No live
 # external API is touched. The mock serves a deterministic 5 results per query,
 # ONE per page, so a count larger than a page forces the cursor/offset scan

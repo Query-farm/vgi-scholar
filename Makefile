@@ -1,58 +1,52 @@
-# vgi-scholar worker -- dev and test targets.
+# vgi-scholar worker -- dev and test targets. `make help` lists them.
 #
-# Usage:
-#   make test        # unit (pytest) + SQL end-to-end (haybarn-unittest, mock server)
+#   make test        # unit (pytest) + SQL end-to-end over stdio, launch and http
 #   make test-unit   # pytest only (fixture parsers + mock-server E2E, no live network)
-#   make test-sql    # SQL end-to-end only (haybarn glob, driven against a mock server)
+#   make test-sql    # test/sql/*.test through DuckDB via ci/run-integration.sh
 #   make lint        # ruff
 #   make typecheck   # mypy
 #
-# The SQL suite drives the worker as a real subprocess over stdio: haybarn-unittest
-# ATTACHes `${VGI_SCHOLAR_WORKER}`, then runs the .test files in test/sql/. The
-# worker's providers are pointed at a local mock HTTP server (started by the test
-# harness) via the VGI_SCHOLAR_*_BASE_URL env vars, so NOTHING in the CI gate
-# touches a live external API.
+# ci/run-integration.sh points the worker's providers at a local mock HTTP server
+# (tests/mock_server.py) via the VGI_SCHOLAR_*_BASE_URL env vars, so NOTHING in
+# the CI gate touches a live external API. haybarn 2.0 is required: its
+# community `vgi` extension speaks the worker's VGI protocol (vgi.v3 / 3.3).
 
-# Worker stdio command (overridable). Use the synced project venv python so the
-# worker runs the LOCKED vgi-python (`uv sync`), NOT the PEP-723 inline-script env
-# `uv run` would resolve — that env caches a stale SDK and can drift from the lock.
-WORKER_STDIO   ?= $(CURDIR)/.venv/bin/python $(CURDIR)/scholar_worker.py
+HAYBARN_VERSION  ?= 2.0.0rc11
+WORKER           := $(CURDIR)/.venv/bin/vgi-scholar-worker
+TOOLS            := $(CURDIR)/.tools
+HAYBARN_UNITTEST := $(TOOLS)/bin/haybarn-unittest
+TRANSPORTS       ?= stdio launch http
 
-# haybarn-unittest: the DuckDB sqllogictest runner
-#   uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'   # ~/.local/bin/haybarn-unittest
-# haybarn 2.0 is required: its community `vgi` extension is the one that speaks the
-# worker's VGI protocol (vgi.v3 / 3.3). --keep-home lets the runner see the
-# extensions installed under the real $HOME (haybarn-unittest 2.0 isolates it).
-HAYBARN        ?= haybarn-unittest
-TEST_DIR        = .
-TEST_PATTERN    = test/sql/*
+build: ## Install the worker (all extras: HTTP serving needs `http`) into .venv
+	uv sync --locked --all-extras
 
-.PHONY: test test-unit test-sql pytest lint typecheck
+tools: ## Install the pinned SQL test runner into .tools
+	@test -x $(HAYBARN_UNITTEST) || { uv venv -q $(TOOLS) && uv pip install -q -p $(TOOLS) haybarn-unittest==$(HAYBARN_VERSION); }
 
-test: test-unit test-sql
+test-sql: build tools ## SQL tests through DuckDB over each transport: make test-sql TRANSPORTS=launch
+	@set -e; for t in $(TRANSPORTS); do \
+	  WORKER=$(WORKER) HAYBARN_UNITTEST=$(HAYBARN_UNITTEST) TRANSPORT=$$t ci/run-integration.sh; \
+	done
 
-test-unit: pytest
+test-sql-all: test-sql ## Alias: SQL tests over every transport
 
-pytest:
+.DEFAULT_GOAL := help
+.PHONY: help build tools test test-unit test-sql test-sql-all pytest lint typecheck check
+
+help: ## List the targets
+	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z_-]+:.*## /{printf "  %-14s %s\n",$$1,$$2}' $(MAKEFILE_LIST)
+
+test: test-unit test-sql ## Unit + SQL tests
+
+check: lint typecheck test ## Lint, types, unit + SQL tests
+
+test-unit: pytest ## Unit tests (pytest)
+
+pytest: build
 	uv run --no-sync pytest -q
 
-# End-to-end SQL: start the mock provider server, export its URL into the
-# per-provider base-URL env vars, then run the haybarn glob with the worker
-# command exported. A tiny Python launcher keeps the server alive only for the
-# duration of the run and tears it down afterward.
-test-sql:
-	@command -v $(HAYBARN) >/dev/null 2>&1 || { \
-		echo "ERROR: $(HAYBARN) not found. Install it with:" >&2; \
-		echo "  uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'" >&2; \
-		echo "  (then ensure ~/.local/bin is on PATH)" >&2; \
-		exit 1; \
-	}
-	VGI_SCHOLAR_WORKER="$(WORKER_STDIO)" \
-	HAYBARN="$(HAYBARN)" TEST_DIR="$(TEST_DIR)" TEST_PATTERN="$(TEST_PATTERN)" \
-		uv run --no-sync python scripts/run_sql_e2e.py
-
-lint:
+lint: ## ruff
 	uv run --no-sync ruff check .
 
-typecheck:
+typecheck: ## mypy
 	uv run --no-sync mypy vgi_scholar
