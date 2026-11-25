@@ -28,7 +28,7 @@ concurrency:
 env:
   # The SQL test runner, pinned; its haybarn 2.0 community `vgi` extension speaks
   # the worker's VGI protocol (vgi.v3).
-  HAYBARN_VERSION: "2.0.0rc11"
+  HAYBARN_VERSION: "2.0.1rc3"
 
 jobs:
   test:

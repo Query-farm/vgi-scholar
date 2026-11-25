@@ -11,7 +11,7 @@
 # the CI gate touches a live external API. haybarn 2.0 is required: its
 # community `vgi` extension speaks the worker's VGI protocol (vgi.v3 / 3.3).
 
-HAYBARN_VERSION  ?= 2.0.0rc11
+HAYBARN_VERSION  ?= 2.0.1rc3
 WORKER           := $(CURDIR)/.venv/bin/vgi-scholar-worker
 TOOLS            := $(CURDIR)/.tools
 HAYBARN_UNITTEST := $(TOOLS)/bin/haybarn-unittest
